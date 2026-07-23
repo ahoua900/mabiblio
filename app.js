@@ -15,7 +15,7 @@
     { id: 'b3', title: 'Petite Philosophie du Quotidien', author: 'Claire Dubosc', genre: 'Essai', age: 'Adultes', color: '#16A34A', rating: 4.2, language: 'Français', pageCount: 8, summaryFull: "De courts essais pour penser le quotidien autrement. Claire Dubosc questionne nos habitudes avec clarté et une pointe d'humour.", reviews: [{ id: 2, user: 'Antoine M.', initial: 'A', rating: 4, comment: "Des chapitres courts, parfaits pour l'écoute pendant les trajets.", date: 'il y a 1 semaine' }, { id: 3, user: 'Léa P.', initial: 'L', rating: 4, comment: "« Le bonheur se cache dans la répétition des petites choses. » Cette phrase m'a marquée.", date: 'il y a 2 semaines' }] },
     { id: 'b4', title: "Mathématiques Faciles — 6e", author: "Ministère de l'Éducation", genre: 'Scolaire', age: 'Jeunesse', color: '#DB2777', rating: 3.9, language: 'Français', pageCount: 10, summaryFull: "Manuel de mathématiques pour la classe de sixième, avec exercices corrigés et rappels de cours illustrés.", reviews: [] },
     { id: 'b5', title: 'Le Dragon Timide', author: 'Sofia Lenoir', genre: 'Bande dessinée', age: 'Enfants', color: '#06B6D4', rating: 4.9, language: 'Français', pageCount: 4, summaryFull: "Un petit dragon qui a peur de son propre feu apprend à s'accepter grâce à ses amis de la forêt.", reviews: [] },
-    { id: 'b6', title: 'Un Été à Marrakech', author: 'Karim Belhadj', genre: 'Roman', age: 'Adultes', color: '#7C3AED', rating: 4.4, language: 'Français', pageCount: 9, summaryFull: "Une famille se retrouve le temps d'un été marocain, entre souvenirs, secrets et retrouvailles inattendues.", reviews: [{ id: 4, user: 'Nadia F.', initial: 'N', rating: 5, comment: "Dépaysant et chaleureux, j'ai adoré la traduction en anglais pour le partager avec mon mari.", date: 'il y a 4 jours' }] },
+    { id: 'b6', title: 'Un Été à Marrakech', author: 'Karim Belhadj', genre: 'Roman', age: 'Adultes', color: '#7C3AED', rating: 4.4, language: 'Français', pageCount: 9, summaryFull: "Une famille se retrouve le temps d'un été marocain, entre souvenirs, secrets et retrouvailles inattendues.", reviews: [{ id: 4, user: 'Nadia F.', initial: 'N', rating: 5, comment: "Dépaysant et chaleureux, un roman que j'ai adoré partager en famille.", date: 'il y a 4 jours' }] },
     { id: 'b7', title: 'Sciences Naturelles Illustrées', author: 'Léa Moreau', genre: 'Scolaire', age: 'Enfants', color: '#059669', rating: 4.1, language: 'Français', pageCount: 7, summaryFull: "Découvrir la nature à travers des illustrations simples et un vocabulaire adapté aux plus jeunes.", reviews: [] },
     { id: 'b8', title: 'Réflexions sur le Temps', author: 'Antoine Marchal', genre: 'Essai', age: 'Adultes', color: '#64748B', rating: 4.6, language: 'Français', pageCount: 11, summaryFull: "Un essai sur notre rapport moderne au temps qui passe, entre urgence permanente et besoin de ralentir.", reviews: [] },
   ];
@@ -23,7 +23,7 @@
   const communityFeed = [
     { id: 1, user: 'Sarah K.', initial: 'S', action: 'a noté', book: 'Le Dragon Timide', rating: 5, text: "Mes enfants l'adorent, parfait pour le soir en version audio.", time: 'il y a 2h', type: 'Avis' },
     { id: 2, user: 'Marc T.', initial: 'M', action: 'a partagé une citation de', book: 'Petite Philosophie du Quotidien', rating: 0, text: "« Le bonheur se cache dans la répétition des petites choses. »", time: 'il y a 5h', type: 'Citations' },
-    { id: 3, user: 'Inès B.', initial: 'I', action: 'a noté', book: 'Un Été à Marrakech', rating: 5, text: "Lu en anglais grâce à la traduction automatique, une très belle découverte.", time: 'il y a 1 jour', type: 'Avis' },
+    { id: 3, user: 'Inès B.', initial: 'I', action: 'a noté', book: 'Un Été à Marrakech', rating: 5, text: "Une très belle découverte, l'écoute audio est parfaite pour les trajets.", time: 'il y a 1 jour', type: 'Avis' },
     { id: 4, user: 'Hugo D.', initial: 'H', action: 'a commenté', book: "L'Enfant et la Rivière", rating: 4, text: "Idéal pour découvrir la lecture audio avec mes élèves de CM1.", time: 'il y a 2 jours', type: 'Avis' },
     { id: 5, user: 'Yasmine C.', initial: 'Y', action: 'a partagé une citation de', book: 'Réflexions sur le Temps', rating: 0, text: "« Ralentir n'est pas renoncer, c'est choisir ce qui compte. »", time: 'il y a 3 jours', type: 'Citations' },
     { id: 6, user: 'Paul V.', initial: 'P', action: 'a noté', book: 'Les Carnets de Mona', rating: 5, text: "Ma fille de 6 ans redemande cette BD chaque soir.", time: 'il y a 4 jours', type: 'Avis' },
@@ -198,7 +198,7 @@
       const { data, error } = await this.client.from('books').select('*').order('created_at', { ascending: true });
       if (error) { console.warn('loadBooks', error.message); return []; }
       return data.map(function (r) {
-        return { id: r.id, owner: r.owner, title: r.title, author: r.author, genre: r.genre, age: r.age, color: r.color || '#6D6AF5', rating: 0, language: r.language, pageCount: r.page_count || 12, summaryFull: r.summary || '', translate: r.translate, targetLanguage: r.target_language, pdf_path: r.pdf_path, reviews: [] };
+        return { id: r.id, owner: r.owner, title: r.title, author: r.author, genre: r.genre, age: r.age, color: r.color || '#6D6AF5', rating: 0, language: r.language, pageCount: r.page_count || 12, summaryFull: r.summary || '', pdf_path: r.pdf_path, reviews: [] };
       });
     },
     async saveBook(book, pdfBlob, owner) {
@@ -211,7 +211,7 @@
       const { error } = await this.client.from('books').insert({
         id: book.id, owner: owner, title: book.title, author: book.author, genre: book.genre, age: book.age,
         language: book.language, color: book.color, page_count: book.pageCount, summary: book.summaryFull,
-        translate: !!book.translate, target_language: book.targetLanguage || null, pdf_path: pdf_path,
+        pdf_path: pdf_path,
       });
       if (error) throw new Error(error.message);
       book.pdf_path = pdf_path;
@@ -356,7 +356,7 @@
     audioSpeed: 1,
     audioVoice: '',
     audioLang: 'Français',
-    uploadForm: { title: '', author: '', genre: 'Roman', age: 'Enfants', language: 'Français', translate: false, targetLanguage: 'English' },
+    uploadForm: { title: '', author: '', genre: 'Roman', age: 'Enfants', language: 'Français' },
     uploadFile: null,
     uploadFileName: '',
     busy: false,
@@ -593,9 +593,6 @@
 
   function uploadScreen() {
     const f = state.uploadForm;
-    const targetBlock = f.translate
-      ? '<div style="margin-bottom:22px"><div style="font-size:12px;font-weight:700;color:#6B6B76;margin-bottom:6px">TRADUIRE VERS</div><select data-a="setUploadTargetLanguage" style="width:100%;padding:10px 12px;border:1px solid #E3E3E9;border-radius:8px;font-size:13.5px;background:#fff;box-sizing:border-box">' + options(languages, f.targetLanguage) + '</select><div style="font-size:11px;color:#B4B4BE;margin-top:6px">La traduction automatique sera bientôt disponible.</div></div>'
-      : '';
     return '' +
       '<div style="height:76px;flex-shrink:0;border-bottom:1px solid #EBEBEE;display:flex;align-items:center;padding:0 36px"><div style="font-size:22px;font-weight:800;letter-spacing:-0.4px">Ajouter un livre</div></div>' +
       '<div style="flex:1;overflow-y:auto;padding:36px;display:flex;justify-content:center">' +
@@ -611,8 +608,6 @@
             '<div><div style="font-size:12px;font-weight:700;color:#6B6B76;margin-bottom:6px">TRANCHE D\'ÂGE</div><select data-a="setUploadAge" style="width:100%;padding:10px 12px;border:1px solid #E3E3E9;border-radius:8px;font-size:13.5px;background:#fff;box-sizing:border-box">' + options(['Enfants', 'Jeunesse', 'Adultes'], f.age) + '</select></div>' +
             '<div style="grid-column:span 2"><div style="font-size:12px;font-weight:700;color:#6B6B76;margin-bottom:6px">LANGUE ORIGINALE</div><select data-a="setUploadLanguage" style="width:100%;padding:10px 12px;border:1px solid #E3E3E9;border-radius:8px;font-size:13.5px;background:#fff;box-sizing:border-box">' + options(languages, f.language) + '</select></div>' +
           '</div>' +
-          '<label style="display:flex;align-items:center;gap:9px;margin-bottom:14px;cursor:pointer"><input type="checkbox" data-a="toggleTranslate"' + (f.translate ? ' checked' : '') + ' style="width:16px;height:16px;accent-color:#4F46E5" /><span style="font-size:13.5px;font-weight:600;color:#3A3A44">Traduire ce livre à la lecture</span></label>' +
-          targetBlock +
           '<button type="submit"' + (state.busy ? ' disabled' : '') + ' style="width:100%;background:#4F46E5;color:#fff;font-weight:700;font-size:14.5px;padding:13px;border:none;border-radius:10px;cursor:pointer;opacity:' + (state.busy ? '0.6' : '1') + '">' + (state.busy ? 'Ajout en cours…' : 'Ajouter à la bibliothèque') + '</button>' +
         '</form></div>';
   }
@@ -757,7 +752,7 @@
    * 10. Câblage des évènements (délégation)
    * ========================================================================== */
   const root = document.getElementById('app');
-  const FIELD_ACTIONS = ['setSearch', 'setReviewText', 'setVoice', 'setSpeed', 'setAudioLang', 'handleFile', 'setUploadTitle', 'setUploadAuthor', 'setUploadGenre', 'setUploadAge', 'setUploadLanguage', 'setUploadTargetLanguage', 'toggleTranslate', 'authName', 'authEmail', 'authPassword'];
+  const FIELD_ACTIONS = ['setSearch', 'setReviewText', 'setVoice', 'setSpeed', 'setAudioLang', 'handleFile', 'setUploadTitle', 'setUploadAuthor', 'setUploadGenre', 'setUploadAge', 'setUploadLanguage', 'authName', 'authEmail', 'authPassword'];
 
   root.addEventListener('click', function (e) {
     const el = e.target.closest('[data-a]');
@@ -797,8 +792,6 @@
       case 'setUploadGenre': state.uploadForm.genre = el.value; break;
       case 'setUploadAge': state.uploadForm.age = el.value; break;
       case 'setUploadLanguage': state.uploadForm.language = el.value; break;
-      case 'setUploadTargetLanguage': state.uploadForm.targetLanguage = el.value; break;
-      case 'toggleTranslate': state.uploadForm.translate = el.checked; render(); break;
       case 'handleFile': {
         const file = el.files[0]; if (!file) return;
         state.uploadFile = file; state.uploadFileName = file.name;
@@ -828,13 +821,13 @@
       if (state.busy) return;
       const f = state.uploadForm;
       if (!f.title.trim()) return;
-      const book = { id: uid(), title: f.title, author: f.author || 'Auteur inconnu', genre: f.genre, age: f.age, color: '#6D6AF5', rating: 0, language: f.translate ? f.targetLanguage : f.language, pageCount: 12, summaryFull: 'Livre ajouté par vous récemment.' + (f.translate ? ' (Traduction vers ' + f.targetLanguage + ' à venir.)' : ''), translate: f.translate, targetLanguage: f.targetLanguage, reviews: [] };
+      const book = { id: uid(), title: f.title, author: f.author || 'Auteur inconnu', genre: f.genre, age: f.age, color: '#6D6AF5', rating: 0, language: f.language, pageCount: 12, summaryFull: 'Livre ajouté par vous récemment.', reviews: [] };
       state.busy = true; render();
       try { await db.saveBook(book, state.uploadFile, state.currentUser); }
       catch (err) { state.busy = false; showToast('Erreur : ' + err.message); return; }
       state.customBooks = state.customBooks.concat(book);
       state.busy = false;
-      state.uploadForm = { title: '', author: '', genre: 'Roman', age: 'Enfants', language: 'Français', translate: false, targetLanguage: 'English' };
+      state.uploadForm = { title: '', author: '', genre: 'Roman', age: 'Enfants', language: 'Français' };
       state.uploadFile = null; state.uploadFileName = '';
       setState({ screen: 'home' });
       showToast('« ' + book.title + ' » a été ajouté à la bibliothèque', 3500);

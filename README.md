@@ -29,9 +29,7 @@ Ouvrez `index.html` dans un navigateur — l'application démarre immédiatement
 | **Profil** | Statistiques calculées : livres ouverts, avis écrits, temps d'écoute cumulé, historique |
 | **Communauté** | Fil filtrable (Tous / Avis / Citations) |
 
-### Encore simulé
-- **Traduction** : l'option est présente mais la traduction automatique n'est pas encore branchée
-  (emplacement prévu — voir « Étapes suivantes »).
+### À noter
 - Les livres du catalogue de démonstration (`b1`…`b8`) n'ont pas de vrai PDF : ils s'ouvrent dans
   le lecteur texte paginé. Seuls les livres **uploadés** ouvrent la visionneuse PDF.
 
@@ -61,12 +59,9 @@ supabase/schema.sql Schéma SQL à exécuter dans Supabase (tables, RLS, storage
 
 La couche `db` (dans `app.js`) expose une API unique (`signIn`, `loadBooks`, `saveReview`,
 `pdfUrl`, …) et choisit automatiquement l'implémentation **Supabase** ou **locale** selon
-`config.js`. Ajouter d'autres backends ou brancher la traduction revient à compléter cette couche.
+`config.js`. Ajouter d'autres backends revient à compléter cette couche.
 
 ## Étapes suivantes possibles
 
-- **Traduction réelle** : Edge Function Supabase appelant un service (DeepL, Google Traduction…),
-  la clé restant côté serveur. L'emplacement côté données est déjà prévu (`translate`,
-  `target_language`).
 - Suivi de progression de lecture côté serveur (table dédiée) plutôt qu'en localStorage.
 - Confirmation d'email / réinitialisation de mot de passe via Supabase Auth.

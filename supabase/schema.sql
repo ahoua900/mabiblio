@@ -56,8 +56,6 @@ create table if not exists public.books (
   color           text,
   page_count      int  default 12,
   summary         text,
-  translate       boolean default false,
-  target_language text,
   pdf_path        text,          -- chemin dans le bucket Storage « pdfs »
   created_at      timestamptz not null default now()
 );
