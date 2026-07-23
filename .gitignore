@@ -1,0 +1,7 @@
+node_modules/
+.DS_Store
+*.log
+
+# Décommentez la ligne suivante si vous préférez garder vos clés Supabase
+# hors du dépôt (dans ce cas, gardez une copie locale de config.js) :
+# config.js
