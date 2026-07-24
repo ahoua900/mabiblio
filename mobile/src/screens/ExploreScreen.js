@@ -12,6 +12,7 @@ import { SectionHeader, Chip, Button } from '../components/ui';
 import { FadeInUp } from '../components/anim';
 import OnlineResultRow from '../components/OnlineResultRow';
 import { searchOnline, resolveDownload } from '../lib/bookSearch';
+import { epubToHtml } from '../lib/epub';
 import { uid } from '../lib/util';
 
 export default function ExploreScreen({ navigation, route }) {
@@ -25,6 +26,7 @@ export default function ExploreScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [busyKey, setBusyKey] = useState(null);
+  const [dlProgress, setDlProgress] = useState(null); // null = indéterminé, sinon 0..1
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
@@ -64,39 +66,71 @@ export default function ExploreScreen({ navigation, route }) {
   async function handleGet(result) {
     if (busyKey) return;
     setBusyKey(result.key);
+    setDlProgress(null); // phase « recherche du fichier »
     try {
       const found = await resolveDownload(result);
-      if (found) {
-        const id = uid();
-        const dest = FileSystem.documentDirectory + id + '.' + found.ext;
-        const dl = await FileSystem.downloadAsync(found.url, dest);
-        const book = {
-          id,
-          title: result.title,
-          author: result.authors || 'Auteur inconnu',
-          genre: 'Roman',
-          age: 'Adultes',
-          color: result.color,
-          rating: 0,
-          language: result.language || 'Français',
-          pageCount: 1,
-          summaryFull: result.description || `Livre importé depuis ${found.source}.`,
-          reviews: [],
-          localUri: dl.uri,
-          source: found.source,
-        };
-        await app.addBook(book, dl.uri);
-        showToast(`« ${short(result.title)} » ajouté à votre bibliothèque`);
-      } else if (result.previewLink) {
-        showToast('Pas de fichier téléchargeable — ouverture de l’aperçu…');
-        Linking.openURL(result.previewLink).catch(() => {});
-      } else {
-        showToast('Aucune version disponible pour ce livre.');
+      if (!found) {
+        if (result.previewLink) {
+          showToast('Pas de fichier téléchargeable — ouverture de l’aperçu…');
+          Linking.openURL(result.previewLink).catch(() => {});
+        } else {
+          showToast('Aucune version disponible pour ce livre.');
+        }
+        return;
       }
+
+      const id = uid();
+      setDlProgress(0); // début du téléchargement
+      const dest = FileSystem.documentDirectory + id + '.' + found.ext;
+      const task = FileSystem.createDownloadResumable(found.url, dest, {}, (p) => {
+        setDlProgress(p.totalBytesExpectedToWrite > 0 ? p.totalBytesWritten / p.totalBytesExpectedToWrite : null);
+      });
+      const res = await task.downloadAsync();
+      let localUri = res.uri;
+
+      // EPUB → conversion en HTML lisible hors-ligne
+      if (found.ext === 'epub') {
+        setDlProgress(null); // phase « conversion »
+        try {
+          const html = await epubToHtml(localUri);
+          const htmlDest = FileSystem.documentDirectory + id + '.html';
+          await FileSystem.writeAsStringAsync(htmlDest, html);
+          await FileSystem.deleteAsync(localUri, { idempotent: true });
+          localUri = htmlDest;
+        } catch (e) {
+          await FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
+          if (result.previewLink) {
+            showToast('EPUB illisible — ouverture de l’aperçu…');
+            Linking.openURL(result.previewLink).catch(() => {});
+          } else {
+            showToast('Ce format EPUB n’a pas pu être ouvert.');
+          }
+          return;
+        }
+      }
+
+      const book = {
+        id,
+        title: result.title,
+        author: result.authors || 'Auteur inconnu',
+        genre: result.genre || 'Roman',
+        age: result.age || 'Adultes',
+        color: result.color,
+        rating: 0,
+        language: result.language || 'Français',
+        pageCount: 1,
+        summaryFull: result.description || `Livre importé depuis ${found.source}.`,
+        reviews: [],
+        localUri,
+        source: found.source,
+      };
+      await app.addBook(book, localUri);
+      showToast(`« ${short(result.title)} » ajouté à votre bibliothèque`);
     } catch (e) {
       showToast('Échec du téléchargement. Réessayez.');
     } finally {
       setBusyKey(null);
+      setDlProgress(null);
     }
   }
 
@@ -147,6 +181,7 @@ export default function ExploreScreen({ navigation, route }) {
             error={error}
             results={results}
             busyKey={busyKey}
+            dlProgress={dlProgress}
             onSearch={runOnlineSearch}
             onGet={handleGet}
           />
@@ -219,7 +254,7 @@ export default function ExploreScreen({ navigation, route }) {
   );
 }
 
-function OnlineSection({ query, loading, error, results, busyKey, onSearch, onGet }) {
+function OnlineSection({ query, loading, error, results, busyKey, dlProgress, onSearch, onGet }) {
   if (loading) {
     return (
       <View style={{ paddingVertical: 50, alignItems: 'center' }}>
@@ -234,7 +269,7 @@ function OnlineSection({ query, loading, error, results, busyKey, onSearch, onGe
         <Text style={styles.count}>{results.length} livre{results.length > 1 ? 's' : ''} trouvé{results.length > 1 ? 's' : ''}</Text>
         {results.map((r, i) => (
           <FadeInUp key={r.key} delay={Math.min(i, 6) * 40}>
-            <OnlineResultRow result={r} busy={busyKey === r.key} onGet={onGet} />
+            <OnlineResultRow result={r} busy={busyKey === r.key} progress={busyKey === r.key ? dlProgress : null} onGet={onGet} />
           </FadeInUp>
         ))}
       </View>

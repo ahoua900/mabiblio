@@ -47,9 +47,10 @@ function normalizeGoogle(it) {
   const ai = it.accessInfo || {};
   if (!vi.title) return null;
   const thumb = vi.imageLinks && https(vi.imageLinks.thumbnail || vi.imageLinks.smallThumbnail);
-  // Google ne fournit un PDF librement téléchargeable que pour le domaine public
-  // et sans jeton DRM (acsTokenLink). Sinon c'est un aperçu.
-  const googlePdf = ai.pdf && ai.pdf.isAvailable && ai.publicDomain && !ai.pdf.acsTokenLink ? https(ai.pdf.downloadLink) : null;
+  // Google ne fournit un PDF/EPUB librement téléchargeable que pour le domaine
+  // public et sans jeton DRM (acsTokenLink). Sinon c'est un aperçu.
+  const clean = (fmt) => (fmt && fmt.isAvailable && ai.publicDomain && !fmt.acsTokenLink ? https(fmt.downloadLink) : null);
+  const { genre, age } = classify(vi.categories, ai.maturityRating);
   return {
     key: 'google:' + it.id,
     source: 'Google Books',
@@ -60,9 +61,12 @@ function normalizeGoogle(it) {
     year: (vi.publishedDate || '').slice(0, 4),
     publisher: vi.publisher || '',
     language: langLabel(vi.language),
+    genre,
+    age,
     previewLink: ai.webReaderLink || vi.previewLink || vi.infoLink || null,
     publicDomain: !!ai.publicDomain,
-    googlePdf,
+    googlePdf: clean(ai.pdf),
+    googleEpub: clean(ai.epub),
     color: colorFromString(vi.title),
   };
 }
@@ -72,13 +76,30 @@ function langLabel(code) {
   return map[code] || 'Français';
 }
 
+// Déduit un genre et une tranche d'âge à partir des catégories Google Books.
+export function classify(categories, maturity) {
+  const c = (categories || []).join(' ').toLowerCase();
+  let genre = 'Roman';
+  if (/comic|graphic novel|bande dessin/.test(c)) genre = 'Bande dessinée';
+  else if (/education|study aids?|textbook|school|teaching|juvenile nonfiction/.test(c)) genre = 'Scolaire';
+  else if (/fiction|novel|stor(y|ies)|literary|roman|poetry|drama/.test(c)) genre = 'Roman';
+  else if (/philosoph|essay|biograph|history|science|psycholog|religion|self-?help|business|politic|nonfiction|social/.test(c)) genre = 'Essai';
+
+  let age = 'Adultes';
+  if (maturity === 'MATURE') age = 'Adultes';
+  else if (/young adult|jeunesse|teen/.test(c)) age = 'Jeunesse';
+  else if (/juvenile|children|picture book|kids|enfant/.test(c)) age = 'Enfants';
+  return { genre, age };
+}
+
 // ---------------------------------------------------------------------------
 // Résolution d'un fichier téléchargeable (cascade)
 // Retourne { url, ext, source } ou null.
 // ---------------------------------------------------------------------------
 export async function resolveDownload(result) {
-  // 0. PDF direct de Google Books (rare)
+  // 0. Fichier direct de Google Books (domaine public, rare)
   if (result.googlePdf) return { url: result.googlePdf, ext: 'pdf', source: 'Google Books' };
+  if (result.googleEpub) return { url: result.googleEpub, ext: 'epub', source: 'Google Books' };
 
   const title = result.title.split(' — ')[0];
   const author = result.authors;
@@ -130,6 +151,8 @@ async function tryGutenberg(title, author) {
   if (html) return { url: html, ext: 'html', source: 'Project Gutenberg' };
   const txt = pick('text/plain');
   if (txt) return { url: txt, ext: 'txt', source: 'Project Gutenberg' };
+  const epub = pick('application/epub');
+  if (epub) return { url: epub, ext: 'epub', source: 'Project Gutenberg' };
   return null;
 }
 

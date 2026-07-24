@@ -4,7 +4,8 @@ import { Feather } from '@expo/vector-icons';
 import { colors, serif } from '../theme';
 import { PressableScale } from './anim';
 
-export default function OnlineResultRow({ result, busy, onGet }) {
+export default function OnlineResultRow({ result, busy, progress, onGet }) {
+  const pct = progress != null ? Math.round(progress * 100) : null;
   return (
     <View style={styles.row}>
       {result.thumbnail ? (
@@ -24,16 +25,28 @@ export default function OnlineResultRow({ result, busy, onGet }) {
         </View>
         {result.description ? <Text style={styles.desc} numberOfLines={2}>{result.description}</Text> : null}
 
-        <PressableScale style={[styles.btn, busy && { opacity: 0.6 }]} onPress={() => !busy && onGet(result)} disabled={busy}>
-          {busy ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <>
-              <Feather name="download" size={15} color="#fff" />
-              <Text style={styles.btnText}>Obtenir</Text>
-            </>
-          )}
-        </PressableScale>
+        {busy && pct != null ? (
+          <View style={styles.progressWrap}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${pct}%` }]} />
+            </View>
+            <Text style={styles.progressText}>{pct}%</Text>
+          </View>
+        ) : (
+          <PressableScale style={[styles.btn, busy && { opacity: 0.7 }]} onPress={() => !busy && onGet(result)} disabled={busy}>
+            {busy ? (
+              <>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.btnText}>Recherche…</Text>
+              </>
+            ) : (
+              <>
+                <Feather name="download" size={15} color="#fff" />
+                <Text style={styles.btnText}>Obtenir</Text>
+              </>
+            )}
+          </PressableScale>
+        )}
       </View>
     </View>
   );
@@ -53,4 +66,9 @@ const styles = StyleSheet.create({
   desc: { fontSize: 12, color: '#5A5A62', lineHeight: 17, marginTop: 6 },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.red, borderRadius: 11, paddingVertical: 9, marginTop: 10, alignSelf: 'flex-start', paddingHorizontal: 16 },
   btnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  progressWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, alignSelf: 'stretch' },
+  progressTrack: { flex: 1, height: 6, backgroundColor: colors.soft2, borderRadius: 6, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: colors.red, borderRadius: 6 },
+  progressText: { fontSize: 12, fontWeight: '700', color: colors.red, width: 38, textAlign: 'right' },
 });
+

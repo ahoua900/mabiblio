@@ -72,12 +72,15 @@ export function createSupabaseStore(url, anonKey) {
       let pdf_path = null;
       if (fileUri) {
         try {
+          const raw = ((book.localUri || fileUri).split('?')[0].split('.').pop() || 'pdf').toLowerCase();
+          const ext = ['pdf', 'html', 'txt', 'epub'].indexOf(raw) !== -1 ? raw : 'pdf';
+          const MIME = { pdf: 'application/pdf', html: 'text/html', txt: 'text/plain', epub: 'application/epub+zip' };
           const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
           const bytes = base64ToBytes(base64);
-          pdf_path = user.id + '/' + book.id + '.pdf';
-          const up = await client.storage.from('pdfs').upload(pdf_path, bytes, { contentType: 'application/pdf', upsert: true });
-          if (up.error) { console.warn('upload pdf', up.error.message); pdf_path = null; }
-        } catch (e) { console.warn('pdf read', e.message); pdf_path = null; }
+          pdf_path = user.id + '/' + book.id + '.' + ext;
+          const up = await client.storage.from('pdfs').upload(pdf_path, bytes, { contentType: MIME[ext], upsert: true });
+          if (up.error) { console.warn('upload file', up.error.message); pdf_path = null; }
+        } catch (e) { console.warn('file read', e.message); pdf_path = null; }
       }
       const { error } = await client.from('books').insert({
         id: book.id, owner: user.id, title: book.title, author: book.author, genre: book.genre, age: book.age,

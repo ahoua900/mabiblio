@@ -68,10 +68,16 @@ Recherche → Google Books (résultats + métadonnées/couvertures)
 - **Google Books** fournit la recherche et les métadonnées (titre, auteur, couverture, description).
 - Au clic sur **Obtenir**, on cherche un fichier réellement téléchargeable (surtout domaine public) :
   **Open Library** (→ Internet Archive), **Project Gutenberg** (Gutendex), puis **Internet Archive**.
-  Formats retenus : PDF, sinon HTML, sinon texte — tous lisibles dans la liseuse intégrée (WebView).
+  Formats retenus : **PDF**, sinon **HTML**, sinon **texte**, sinon **EPUB** — tous lisibles dans la
+  liseuse intégrée.
+- **EPUB** : converti à la volée en HTML lisible hors-ligne (dézippage + extraction des chapitres
+  dans l'ordre de lecture, via `jszip` ; voir `src/lib/epub.js`).
+- **Genre & tranche d'âge** déduits automatiquement des catégories Google Books (`classify`).
+- Une **barre de progression** s'affiche pendant le téléchargement (taille connue), sinon un
+  indicateur d'activité (recherche du fichier / conversion EPUB).
 - Si aucun fichier n'est disponible, l'**aperçu** s'ouvre dans le navigateur.
-- Le livre téléchargé est stocké sur l'appareil (et envoyé dans Supabase Storage si configuré),
-  puis lisible **hors-ligne** comme n'importe quel livre ajouté.
+- Le livre téléchargé est stocké sur l'appareil (et envoyé dans Supabase Storage — avec le bon
+  type MIME — si configuré), puis lisible **hors-ligne** comme n'importe quel livre ajouté.
 
 > **Clé API Google Books (optionnelle)** — la recherche marche sans clé, mais Google limite le
 > quota *par adresse IP et par jour*. Pour un usage soutenu, renseignez `googleBooksApiKey` dans
