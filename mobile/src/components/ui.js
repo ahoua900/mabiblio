@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { colors, serif } from '../theme';
+import { PressableScale } from './anim';
 
 export function Chip({ label, active, red, onPress, style, children }) {
   const bg = active ? (red ? colors.red : colors.text) : colors.soft;
@@ -18,15 +19,14 @@ export function Button({ title, onPress, variant = 'primary', disabled, style, i
   const fg = variant === 'primary' ? '#fff' : colors.text;
   const border = variant === 'ghost' ? { borderWidth: 1, borderColor: colors.line } : null;
   return (
-    <TouchableOpacity
-      activeOpacity={0.85}
+    <PressableScale
       onPress={onPress}
       disabled={disabled}
       style={[styles.btn, { backgroundColor: bg, opacity: disabled ? 0.55 : 1 }, border, style]}
     >
       {icon}
       {title ? <Text style={{ color: fg, fontSize: 15, fontWeight: '700' }}>{title}</Text> : null}
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
 

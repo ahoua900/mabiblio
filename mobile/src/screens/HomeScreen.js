@@ -9,6 +9,7 @@ import { colors, serif, GENRE_COLORS } from '../theme';
 import Cover from '../components/Cover';
 import { SectionHeader, Avatar } from '../components/ui';
 import Fab from '../components/Fab';
+import { FadeInUp, PressableScale } from '../components/anim';
 
 export default function HomeScreen({ navigation }) {
   const app = useApp();
@@ -38,9 +39,9 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
 
         {current && (
-          <>
+          <FadeInUp delay={60}>
             <SectionHeader title="Reprendre la lecture" />
-            <TouchableOpacity activeOpacity={0.85} style={styles.continue} onPress={() => open(current.id)}>
+            <PressableScale style={styles.continue} onPress={() => open(current.id)}>
               <Cover book={current} width={58} height={82} radius={10} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.contTitle} numberOfLines={1}>{current.title}</Text>
@@ -53,39 +54,45 @@ export default function HomeScreen({ navigation }) {
                 </Text>
               </View>
               <View style={styles.playBtn}><Feather name="play" size={16} color="#fff" /></View>
-            </TouchableOpacity>
-          </>
+            </PressableScale>
+          </FadeInUp>
         )}
 
-        <SectionHeader title="Tendances cette semaine" actionLabel="Tout voir" onAction={() => navigation.navigate('Explorer')} />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 15 }}>
-          {trending.map((b) => (
-            <View key={b.id} style={{ width: 120 }}>
-              <Cover book={b} width={120} height={172} onPress={() => open(b.id)} />
-              <Text style={styles.cardTitle} numberOfLines={2}>{b.title}</Text>
-              <Text style={styles.cardAuthor} numberOfLines={1}>{b.author}</Text>
-            </View>
-          ))}
-        </ScrollView>
+        <FadeInUp delay={140}>
+          <SectionHeader title="Tendances cette semaine" actionLabel="Tout voir" onAction={() => navigation.navigate('Explorer')} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 15 }}>
+            {trending.map((b) => (
+              <View key={b.id} style={{ width: 120 }}>
+                <Cover book={b} width={120} height={172} onPress={() => open(b.id)} />
+                <Text style={styles.cardTitle} numberOfLines={2}>{b.title}</Text>
+                <Text style={styles.cardAuthor} numberOfLines={1}>{b.author}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </FadeInUp>
 
-        <SectionHeader title="Explorer par catégorie" />
-        <View style={styles.catGrid}>
-          {genres.map((g) => (
-            <TouchableOpacity key={g} activeOpacity={0.85} style={[styles.cat, { backgroundColor: GENRE_COLORS[g] }]} onPress={() => navigation.navigate('Explorer', { category: g })}>
-              <Text style={styles.catText}>{g}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <FadeInUp delay={220}>
+          <SectionHeader title="Explorer par catégorie" />
+          <View style={styles.catGrid}>
+            {genres.map((g) => (
+              <TouchableOpacity key={g} activeOpacity={0.85} style={[styles.cat, { backgroundColor: GENRE_COLORS[g] }]} onPress={() => navigation.navigate('Explorer', { category: g })}>
+                <Text style={styles.catText}>{g}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </FadeInUp>
 
-        <SectionHeader title="Nouveautés" />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 15 }}>
-          {nouveautes.map((b, i) => (
-            <View key={b.id + '-' + i} style={{ width: 110 }}>
-              <Cover book={b} width={110} height={158} onPress={() => open(b.id)} />
-              <Text style={styles.cardTitle} numberOfLines={2}>{b.title}</Text>
-            </View>
-          ))}
-        </ScrollView>
+        <FadeInUp delay={300}>
+          <SectionHeader title="Nouveautés" />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 15 }}>
+            {nouveautes.map((b, i) => (
+              <View key={b.id + '-' + i} style={{ width: 110 }}>
+                <Cover book={b} width={110} height={158} onPress={() => open(b.id)} />
+                <Text style={styles.cardTitle} numberOfLines={2}>{b.title}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </FadeInUp>
       </ScrollView>
 
       <Fab onPress={() => navigation.navigate('Upload')} />

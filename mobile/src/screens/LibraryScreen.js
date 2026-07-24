@@ -8,6 +8,7 @@ import { colors, serif } from '../theme';
 import Cover from '../components/Cover';
 import Stars from '../components/Stars';
 import Fab from '../components/Fab';
+import { FadeInUp, animateNext } from '../components/anim';
 
 const TABS = ['Tout', 'Ma liste', 'En cours', 'Mes livres'];
 
@@ -36,7 +37,7 @@ export default function LibraryScreen({ navigation }) {
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingTop: 6 }}>
           {TABS.map((t) => (
-            <TouchableOpacity key={t} style={[styles.chip, { backgroundColor: t === tab ? colors.text : colors.soft }]} onPress={() => setTab(t)}>
+            <TouchableOpacity key={t} style={[styles.chip, { backgroundColor: t === tab ? colors.text : colors.soft }]} onPress={() => { animateNext(); setTab(t); }}>
               <Text style={{ color: t === tab ? '#fff' : '#48484E', fontSize: 13, fontWeight: '600' }}>{t}</Text>
             </TouchableOpacity>
           ))}
@@ -44,11 +45,12 @@ export default function LibraryScreen({ navigation }) {
 
         {items.length ? (
           <View style={{ gap: 12, marginTop: 16 }}>
-            {items.map((b) => {
+            {items.map((b, i) => {
               const pr = progress[b.id];
               const v = pr ? Math.round(pr.value) : null;
               return (
-                <TouchableOpacity key={b.id} activeOpacity={0.85} style={styles.row} onPress={() => open(b.id)}>
+                <FadeInUp key={b.id} delay={i * 45}>
+                <TouchableOpacity activeOpacity={0.85} style={styles.row} onPress={() => open(b.id)}>
                   <Cover book={b} width={52} height={74} radius={9} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.rowTitle} numberOfLines={2}>{b.title}</Text>
@@ -63,6 +65,7 @@ export default function LibraryScreen({ navigation }) {
                     <Feather name="bookmark" size={20} color={app.inList(b.id) ? colors.red : colors.muted2} />
                   </TouchableOpacity>
                 </TouchableOpacity>
+                </FadeInUp>
               );
             })}
           </View>

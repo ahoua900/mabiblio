@@ -8,6 +8,7 @@ import { colors, serif, GENRE_COLORS } from '../theme';
 import Cover from '../components/Cover';
 import Stars from '../components/Stars';
 import { Button } from '../components/ui';
+import { FadeInUp } from '../components/anim';
 
 export default function BookScreen({ route, navigation }) {
   const app = useApp();
@@ -51,7 +52,7 @@ export default function BookScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
-        <View style={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 8 }}>
+        <FadeInUp delay={40} style={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 8 }}>
           <Cover book={book} width={140} height={206} />
           <Text style={styles.title}>{book.title}</Text>
           <Text style={styles.author}>{book.author}</Text>
@@ -67,7 +68,7 @@ export default function BookScreen({ route, navigation }) {
             <View style={styles.metaChip}><Text style={styles.metaChipText}>{book.age}</Text></View>
             <View style={styles.metaChip}><Text style={styles.metaChipText}>{book.language}</Text></View>
           </View>
-        </View>
+        </FadeInUp>
 
         <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginTop: 20 }}>
           <Button title="Lire" onPress={() => navigation.navigate('Reader', { bookId: book.id, mode: 'text' })} style={{ flex: 1 }} />

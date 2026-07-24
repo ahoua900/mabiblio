@@ -43,6 +43,24 @@ Identique à la version web : renseignez `src/config.js` avec l'`URL` et la clé
 de votre projet, et exécutez le schéma [`../supabase/schema.sql`](../supabase/schema.sql) dans
 le SQL Editor de Supabase. Tant que `config.js` est vide, l'app tourne entièrement en local.
 
+## Animations
+
+Toutes les animations utilisent l'**API `Animated` intégrée** de React Native (aucune dépendance
+native supplémentaire, aucune config Babel) :
+
+- **Splash animé** (`src/components/AnimatedSplash.js`) — le splash natif statique est maintenu via
+  `expo-splash-screen`, puis un overlay animé prend le relais : le logo apparaît (ressort + fondu),
+  « Lectura » monte en fondu, et l'écran se dissout une fois l'app prête.
+- **Appui tactile** — couvertures et boutons se réduisent légèrement à la pression
+  (`PressableScale`).
+- **Entrées décalées** — l'accueil et la fiche livre apparaissent en fondu-montée
+  (`FadeInUp`), les éléments de la bibliothèque en cascade.
+- **Bouton lecture audio** — pulsation continue pendant l'écoute.
+- **Transitions de mise en page** (`LayoutAnimation`) — changement d'onglet de la bibliothèque
+  et modifications des réglages de lecture (police, marges, tonalité) animés en douceur.
+
+Les briques réutilisables sont dans `src/components/anim.js`.
+
 ## Icône & splash screen
 
 Les visuels sont dans [`assets/`](assets/) et déclarés dans `app.json` :

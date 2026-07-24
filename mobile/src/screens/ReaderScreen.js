@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, Platform, Animated, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
@@ -9,6 +9,7 @@ import { getBook } from '../lib/books';
 import { LANG_CODES, languages } from '../data';
 import { colors, serif, THEMES, FONTS, MARGINS } from '../theme';
 import audio from '../lib/audio';
+import { animateNext } from '../components/anim';
 
 const SPEEDS = [0.75, 1, 1.25, 1.5];
 
@@ -27,12 +28,31 @@ export default function ReaderScreen({ route, navigation }) {
 
   const prefs = app.prefs;
   const theme = THEMES[prefs.theme];
+  const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     mounted.current = true;
     if (mode === 'text') resolvePdf();
     return () => { mounted.current = false; audio.stop(); };
   }, []);
+
+  // Pulsation du bouton lecture pendant l'écoute.
+  useEffect(() => {
+    let loop;
+    if (playing) {
+      loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulse, { toValue: 1.08, duration: 750, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+          Animated.timing(pulse, { toValue: 1, duration: 750, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        ])
+      );
+      loop.start();
+    } else {
+      pulse.stopAnimation();
+      pulse.setValue(1);
+    }
+    return () => { if (loop) loop.stop(); };
+  }, [playing]);
 
   async function resolvePdf() {
     try {
@@ -150,9 +170,11 @@ export default function ReaderScreen({ route, navigation }) {
             <Text style={{ fontSize: 11.5, color: theme.sub, fontWeight: '600' }}>Synthèse vocale</Text>
           </View>
 
-          <TouchableOpacity onPress={togglePlay} style={styles.playBig}>
-            <Feather name={playing ? 'pause' : 'play'} size={26} color="#fff" />
-          </TouchableOpacity>
+          <Animated.View style={{ transform: [{ scale: pulse }] }}>
+            <TouchableOpacity onPress={togglePlay} style={styles.playBig}>
+              <Feather name={playing ? 'pause' : 'play'} size={26} color="#fff" />
+            </TouchableOpacity>
+          </Animated.View>
 
           <Text style={[styles.audioLabel, { color: theme.sub }]}>VITESSE</Text>
           <View style={styles.audioChips}>
@@ -187,7 +209,7 @@ export default function ReaderScreen({ route, navigation }) {
           <Label>Tonalité</Label>
           <Row>
             {Object.keys(THEMES).map((k) => (
-              <SheetChip key={k} label={THEMES[k].label} active={prefs.theme === k} onPress={() => app.setReaderPref({ theme: k })} />
+              <SheetChip key={k} label={THEMES[k].label} active={prefs.theme === k} onPress={() => { animateNext(); app.setReaderPref({ theme: k }); }} />
             ))}
           </Row>
 
@@ -211,14 +233,14 @@ export default function ReaderScreen({ route, navigation }) {
           <Label style={{ marginTop: 20 }}>Police</Label>
           <Row>
             {Object.keys(FONTS).map((k) => (
-              <SheetChip key={k} label={FONTS[k].label} active={prefs.fontKey === k} onPress={() => app.setReaderPref({ fontKey: k })} />
+              <SheetChip key={k} label={FONTS[k].label} active={prefs.fontKey === k} onPress={() => { animateNext(); app.setReaderPref({ fontKey: k }); }} />
             ))}
           </Row>
 
           <Label style={{ marginTop: 20 }}>Marges</Label>
           <Row>
             {Object.keys(MARGINS).map((k) => (
-              <SheetChip key={k} label={MARGINS[k].label} active={prefs.margin === k} onPress={() => app.setReaderPref({ margin: k })} />
+              <SheetChip key={k} label={MARGINS[k].label} active={prefs.margin === k} onPress={() => { animateNext(); app.setReaderPref({ margin: k }); }} />
             ))}
           </Row>
           <View style={{ height: 12 }} />

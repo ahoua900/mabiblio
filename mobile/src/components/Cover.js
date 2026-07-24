@@ -1,15 +1,12 @@
 import React from 'react';
-import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { serif } from '../theme';
+import { PressableScale } from './anim';
 
 export default function Cover({ book, width, height, onPress, radius = 13 }) {
-  const Wrapper = onPress ? TouchableOpacity : View;
-  return (
-    <Wrapper
-      activeOpacity={0.85}
-      onPress={onPress}
-      style={[styles.cover, { width, height, borderRadius: radius, backgroundColor: book.color }]}
-    >
+  const boxStyle = [styles.cover, { width, height, borderRadius: radius, backgroundColor: book.color }];
+  const inner = (
+    <>
       <View style={styles.tag}>
         <Text style={styles.tagText}>PDF</Text>
       </View>
@@ -17,8 +14,17 @@ export default function Cover({ book, width, height, onPress, radius = 13 }) {
         <Text style={styles.title} numberOfLines={3}>{book.title}</Text>
         <Text style={styles.author} numberOfLines={1}>{book.author}</Text>
       </View>
-    </Wrapper>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <PressableScale onPress={onPress} style={boxStyle}>
+        {inner}
+      </PressableScale>
+    );
+  }
+  return <View style={boxStyle}>{inner}</View>;
 }
 
 const styles = StyleSheet.create({
