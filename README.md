@@ -37,6 +37,13 @@ Ouvrez `index.html` dans un navigateur — l'application démarre immédiatement
 - Les livres du catalogue de démonstration (`b1`…`b8`) n'ont pas de vrai PDF : ils s'ouvrent dans
   le lecteur texte paginé. Seuls les livres **uploadés** ouvrent la visionneuse PDF.
 
+## Version mobile (React Native / Expo)
+
+Une application mobile native équivalente se trouve dans [`mobile/`](mobile/) : même design et
+mêmes fonctionnalités (comptes Supabase, liseuse avec réglages de lecture, écoute audio via
+`expo-speech`, ajout de PDF, favoris, avis). Voir [`mobile/README.md`](mobile/README.md) pour
+l'installation et le lancement (`cd mobile && npm install && npx expo start`).
+
 ## Configurer Supabase
 
 L'app fonctionne sans Supabase (mode local). Pour activer les comptes et la persistance côté serveur :

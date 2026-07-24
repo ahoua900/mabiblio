@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Lectura",
+    "slug": "lectura",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "lectura",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lectura.app"
+    },
+    "android": {
+      "package": "com.lectura.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#E4002B"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
