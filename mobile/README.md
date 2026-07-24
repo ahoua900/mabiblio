@@ -43,6 +43,44 @@ Identique à la version web : renseignez `src/config.js` avec l'`URL` et la clé
 de votre projet, et exécutez le schéma [`../supabase/schema.sql`](../supabase/schema.sql) dans
 le SQL Editor de Supabase. Tant que `config.js` est vide, l'app tourne entièrement en local.
 
+## Icône & splash screen
+
+Les visuels sont dans [`assets/`](assets/) et déclarés dans `app.json` :
+
+| Fichier | Rôle |
+|---|---|
+| `icon.png` (1024²) | Icône de l'app (iOS + repli) |
+| `adaptive-icon.png` (1024²) | Avant-plan de l'icône adaptative Android (fond rouge `#E4002B`) |
+| `splash-icon.png` (1024²) | Écran de démarrage (centré, fond blanc) |
+| `favicon.png` | Favicon web |
+
+Ils sont générés à partir de SVG (carré rouge + glyphe « livre » blanc, la marque Lectura).
+Pour les régénérer après modification, adaptez le script `scripts/gen-assets.js` (voir plus bas)
+ou remplacez simplement les PNG.
+
+## Builds natifs avec EAS
+
+La configuration [`eas.json`](eas.json) définit trois profils : `development` (avec dev-client),
+`preview` (APK Android / build simulateur iOS, distribution interne) et `production`.
+
+```bash
+npm install -g eas-cli          # une seule fois
+eas login                       # votre compte Expo
+eas init                        # crée le projet EAS et renseigne extra.eas.projectId
+
+# Builds
+eas build --profile preview --platform android      # APK à installer directement
+eas build --profile preview --platform ios          # build simulateur
+eas build --profile production --platform all        # binaires stores
+
+# Publication OTA (mises à jour sans rebuild), si vous ajoutez expo-updates
+# eas update --branch production
+```
+
+> `eas init` ajoute automatiquement `extra.eas.projectId` dans `app.json` : c'est cet identifiant
+> qui relie le projet local à votre compte Expo. Les identifiants d'app sont déjà définis
+> (`com.lectura.app` pour iOS et Android) ; changez-les si besoin avant le premier build.
+
 ## Architecture
 
 ```
