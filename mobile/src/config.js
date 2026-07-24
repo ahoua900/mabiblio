@@ -14,4 +14,8 @@
 export default {
   supabaseUrl: '',
   supabaseAnonKey: '',
+
+  // Optionnel : clé API Google Books. La recherche fonctionne sans clé
+  // (quota public plus limité). https://console.cloud.google.com → Books API
+  googleBooksApiKey: '',
 };

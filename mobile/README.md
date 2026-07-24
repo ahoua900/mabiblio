@@ -36,7 +36,9 @@ sur `i` (simulateur iOS) / `a` (émulateur Android) dans le terminal.
 - **Comptes** — inscription / connexion / déconnexion via **Supabase Auth**, ou comptes locaux
   (AsyncStorage) tant que Supabase n'est pas configuré.
 - **Découverte** (Accueil) — « Reprendre la lecture », tendances, catégories, nouveautés.
-- **Explorer** — recherche par titre / auteur / genre, recherches récentes, catégories.
+- **Explorer** — deux modes via un sélecteur *Catalogue / En ligne* :
+  - *Catalogue* : recherche locale par titre / auteur / genre, recherches récentes, catégories.
+  - *En ligne* : recherche de livres sur le web (voir ci-dessous).
 - **Liseuse** — réglages de lecture réels : **tonalité** (Clair / Sépia / Sombre / Charbon),
   **taille** et **famille** de police, **marges** ; barre de progression par page.
 - **Écoute audio** — synthèse vocale réelle via **`expo-speech`** (vitesse, langue).
@@ -49,6 +51,31 @@ sur `i` (simulateur iOS) / `a` (émulateur Android) dans le terminal.
 Identique à la version web : renseignez `src/config.js` avec l'`URL` et la clé **anon public**
 de votre projet, et exécutez le schéma [`../supabase/schema.sql`](../supabase/schema.sql) dans
 le SQL Editor de Supabase. Tant que `config.js` est vide, l'app tourne entièrement en local.
+
+## Recherche de livres en ligne
+
+Onglet **Explorer → En ligne**. La recherche suit une cascade (`src/lib/bookSearch.js`) :
+
+```
+Recherche → Google Books (résultats + métadonnées/couvertures)
+              │
+              ├─ « Obtenir »
+              │     ├─ fichier libre trouvé → téléchargement + ajout à la bibliothèque
+              │     │        (cascade : Open Library → Project Gutenberg → Internet Archive)
+              │     └─ sinon → ouverture de l'aperçu (Google Books / page source)
+```
+
+- **Google Books** fournit la recherche et les métadonnées (titre, auteur, couverture, description).
+- Au clic sur **Obtenir**, on cherche un fichier réellement téléchargeable (surtout domaine public) :
+  **Open Library** (→ Internet Archive), **Project Gutenberg** (Gutendex), puis **Internet Archive**.
+  Formats retenus : PDF, sinon HTML, sinon texte — tous lisibles dans la liseuse intégrée (WebView).
+- Si aucun fichier n'est disponible, l'**aperçu** s'ouvre dans le navigateur.
+- Le livre téléchargé est stocké sur l'appareil (et envoyé dans Supabase Storage si configuré),
+  puis lisible **hors-ligne** comme n'importe quel livre ajouté.
+
+> **Clé API Google Books (optionnelle)** — la recherche marche sans clé, mais Google limite le
+> quota *par adresse IP et par jour*. Pour un usage soutenu, renseignez `googleBooksApiKey` dans
+> `src/config.js` (Google Cloud Console → Books API).
 
 ## Animations
 
