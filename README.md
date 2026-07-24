@@ -1,12 +1,13 @@
 # Lectura — Bibliothèque audio
 
-Application web d'une bibliothèque de livres numériques : catalogue, lecture PDF réelle,
-écoute audio par **synthèse vocale**, avis, communauté, ajout de livres et **comptes utilisateurs**.
-Interface en français.
+Application web **mobile-first** de bibliothèque de livres numériques : découverte, liseuse
+avec réglages de lecture, lecture PDF réelle, écoute audio par **synthèse vocale**, favoris,
+avis, communauté, ajout de livres et **comptes utilisateurs**. Interface en français.
 
-Implémentation de la maquette Claude Design **Bibliotheque.dc.html**
-([projet](https://claude.ai/design/p/47d68eb0-5669-42ec-a66f-c29e14c851f4?file=Bibliotheque.dc.html)),
-étendue avec un vrai backend **Supabase** (avec repli local hors-ligne).
+Design original inspiré d'apps de lecture premium (liseuse type Kobo, découverte type librairie) :
+fond clair épuré, accent rouge éditorial, typographie serif pour la lecture, navigation par
+onglets en bas. Sur grand écran, l'app s'affiche centrée comme un téléphone.
+Le backend est assuré par **Supabase** (avec repli local hors-ligne).
 
 ## Lancer
 
@@ -21,11 +22,14 @@ Ouvrez `index.html` dans un navigateur — l'application démarre immédiatement
 
 | Domaine | Fonctionnement |
 |---|---|
-| **Recherche** | Filtre le catalogue par titre / auteur, en direct, combinée aux filtres genre / âge |
-| **Comptes** | Inscription / connexion / déconnexion (Supabase Auth, ou comptes locaux en mode hors-ligne) |
-| **Persistance** | Livres ajoutés et avis **survivent au rechargement** (Supabase, sinon localStorage + IndexedDB) |
+| **Découverte** | Accueil avec « Reprendre la lecture », tendances, catégories et nouveautés |
+| **Recherche** | Filtre par titre / auteur / genre en direct, recherches récentes mémorisées, catégories |
+| **Liseuse** | Réglages de lecture réels : tonalité (Clair / Sépia / Sombre / Charbon), taille et famille de police, marges — appliqués en direct ; barre de progression par page |
 | **Audio** | Lecture **réelle** par synthèse vocale du navigateur (`SpeechSynthesis`) : voix, vitesse, langue |
 | **PDF** | Les livres uploadés sont **réellement affichés** (visionneuse PDF intégrée) et stockés |
+| **Favoris** | Bouton marque-page → « Ma liste », retrouvée dans la Bibliothèque, persistée |
+| **Comptes** | Inscription / connexion / déconnexion (Supabase Auth, ou comptes locaux en mode hors-ligne) |
+| **Persistance** | Livres ajoutés, avis et favoris **survivent au rechargement** (Supabase, sinon localStorage + IndexedDB) |
 | **Profil** | Statistiques calculées : livres ouverts, avis écrits, temps d'écoute cumulé, historique |
 | **Communauté** | Fil filtrable (Tous / Avis / Citations) |
 
