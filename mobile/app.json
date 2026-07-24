@@ -13,7 +13,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.lectura.app"
@@ -28,6 +30,18 @@
     "web": {
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "1ecc07d5-e127-4287-88e2-31563c53a0df"
+      }
+    },
+    "owner": "elvisahoua",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/1ecc07d5-e127-4287-88e2-31563c53a0df"
     }
   }
 }
