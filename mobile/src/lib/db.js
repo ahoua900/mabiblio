@@ -26,6 +26,7 @@ export const db = {
   session: () => (remote ? remote.session() : localStore.session()),
   loadBooks: () => (remote ? remote.loadBooks() : localStore.loadBooks()),
   saveBook: (book, fileUri, user) => (remote ? remote.saveBook(book, fileUri, user) : localStore.saveBook(book)),
+  deleteBook: (book, user) => (remote ? remote.deleteBook(book, user) : localStore.deleteBook(book.id)),
   loadReviews: () => (remote ? remote.loadReviews() : localStore.loadReviews()),
   saveReview: (id, r, user) => (remote ? remote.saveReview(id, r, user) : localStore.saveReview(id, r)),
   // En local, le PDF est déjà un fichier sur l'appareil : on renvoie son uri.

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, Platform, Animated, Easing } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, Platform, Animated, Easing, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
@@ -10,6 +10,7 @@ import { LANG_CODES, languages } from '../data';
 import { colors, serif, THEMES, FONTS, MARGINS } from '../theme';
 import audio from '../lib/audio';
 import { animateNext } from '../components/anim';
+import { translateText, translationConfigured } from '../lib/translate';
 
 const SPEEDS = [0.75, 1, 1.25, 1.5];
 
@@ -17,13 +18,21 @@ export default function ReaderScreen({ route, navigation }) {
   const app = useApp();
   const book = getBook(app.customBooks, route.params.bookId);
   const [mode, setMode] = useState(route.params.mode || 'text');
-  const [page, setPage] = useState(1);
+  // Reprise de lecture : page initiale déduite de la progression enregistrée.
+  const [page, setPage] = useState(() => {
+    const b = getBook(app.customBooks, route.params.bookId);
+    const pct = (app.progress[route.params.bookId] || {}).value || 0;
+    return b ? Math.min(b.pageCount, Math.max(1, Math.round((pct / 100) * b.pageCount) || 1)) : 1;
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [playing, setPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [speed, setSpeed] = useState(1);
   const [lang, setLang] = useState('Français');
+  const [transLang, setTransLang] = useState('original');
+  const [transText, setTransText] = useState(null);
+  const [transLoading, setTransLoading] = useState(false);
   const mounted = useRef(true);
 
   const prefs = app.prefs;
@@ -94,10 +103,37 @@ export default function ReaderScreen({ route, navigation }) {
     }
   }
 
+  async function handleTranslate(target) {
+    if (target === transLang) return;
+    if (target === 'original') { setTransLang('original'); setTransText(null); return; }
+    // Cache : si déjà traduit, on réutilise sans rappeler l'API.
+    const cached = app.getTranslation(book.id, target);
+    if (cached) { setTransText(cached); setTransLang(target); return; }
+    if (!translationConfigured()) {
+      Alert.alert('Traduction', 'Ajoutez votre clé Mistral (ou une URL de proxy) dans src/config.js pour activer la traduction.');
+      return;
+    }
+    setTransLoading(true);
+    setTransLang(target);
+    try {
+      const t = await translateText(book.summaryFull, target);
+      setTransText(t);
+      app.saveTranslation(book.id, target, t);
+    } catch (e) {
+      Alert.alert('Traduction', e.message);
+      setTransLang('original');
+      setTransText(null);
+    } finally {
+      setTransLoading(false);
+    }
+  }
+
   if (!book) return <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} />;
 
   const font = FONTS[prefs.fontKey].family;
   const pad = MARGINS[prefs.margin].pad;
+  const translated = transLang !== 'original' && transText != null;
+  const paragraphs = translated ? transText.split(/\n{2,}|\r?\n/).filter((p) => p.trim()) : [book.summaryFull, book.summaryFull, book.summaryFull];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={['top', 'bottom']}>
@@ -132,12 +168,20 @@ export default function ReaderScreen({ route, navigation }) {
             <View style={{ alignItems: 'center', marginVertical: 22 }}>
               <Text style={{ fontSize: 12, letterSpacing: 2, color: theme.sub, fontWeight: '700' }}>CHAPITRE {page}</Text>
               <Text style={{ fontSize: 20, fontWeight: '700', marginTop: 8, fontFamily: font, color: theme.fg }}>{book.title}</Text>
+              {translated ? <Text style={{ marginTop: 8, fontSize: 11, fontWeight: '700', letterSpacing: 0.5, color: colors.red }}>TRADUIT · {transLang.toUpperCase()}</Text> : null}
             </View>
-            {[0, 1, 2].map((i) => (
-              <Text key={i} style={{ fontSize: prefs.size, lineHeight: prefs.size * 1.85, marginBottom: 18, color: theme.fg, fontFamily: font, textAlign: 'justify' }}>
-                {book.summaryFull}
-              </Text>
-            ))}
+            {transLoading ? (
+              <View style={{ paddingVertical: 30, alignItems: 'center' }}>
+                <ActivityIndicator color={colors.red} />
+                <Text style={{ color: theme.sub, marginTop: 10, fontSize: 13 }}>Traduction en cours…</Text>
+              </View>
+            ) : (
+              paragraphs.map((p, i) => (
+                <Text key={i} style={{ fontSize: prefs.size, lineHeight: prefs.size * 1.85, marginBottom: 18, color: theme.fg, fontFamily: font, textAlign: 'justify' }}>
+                  {p}
+                </Text>
+              ))
+            )}
           </ScrollView>
           <View style={styles.bottom}>
             <Slider
@@ -243,6 +287,17 @@ export default function ReaderScreen({ route, navigation }) {
               <SheetChip key={k} label={MARGINS[k].label} active={prefs.margin === k} onPress={() => { animateNext(); app.setReaderPref({ margin: k }); }} />
             ))}
           </Row>
+
+          <Label style={{ marginTop: 20 }}>Traduction</Label>
+          <Row>
+            <SheetChip label="Original" active={transLang === 'original'} onPress={() => handleTranslate('original')} />
+            {languages.map((l) => (
+              <SheetChip key={l} label={l} active={transLang === l} onPress={() => handleTranslate(l)} />
+            ))}
+          </Row>
+          <Text style={{ fontSize: 11.5, color: colors.muted2, marginTop: 8 }}>
+            La traduction est enregistrée : elle ne sera calculée qu'une seule fois par langue.
+          </Text>
           <View style={{ height: 12 }} />
         </View>
       </Modal>

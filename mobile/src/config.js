@@ -18,4 +18,15 @@ export default {
   // Optionnel : clé API Google Books. La recherche fonctionne sans clé
   // (quota public plus limité). https://console.cloud.google.com → Books API
   googleBooksApiKey: '',
+
+  // ---- Traduction (agent Mistral) ----
+  // Deux façons de l'activer :
+  //  1) RECOMMANDÉ : mettez l'URL d'un proxy serveur (ex. Edge Function Supabase)
+  //     qui reçoit { text, targetLang } et renvoie { translation }. La clé secrète
+  //     reste alors côté serveur.
+  //  2) RAPIDE (prototype) : mettez directement votre clé Mistral ci-dessous.
+  //     ⚠️ Une clé dans l'app est extractible : ne publiez pas l'app ainsi.
+  mistralProxyUrl: '',
+  mistralApiKey: '',
+  mistralAgentId: 'ag_019f94d427db73c3adfdbbb6126ee1d9',
 };

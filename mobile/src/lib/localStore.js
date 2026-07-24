@@ -36,6 +36,10 @@ export const localStore = {
     books.push(book);
     await storage.set('books', books);
   },
+  async deleteBook(id) {
+    const books = (await storage.get('books', [])) || [];
+    await storage.set('books', books.filter((b) => b.id !== id));
+  },
   async loadReviews() {
     return storage.get('reviews', {});
   },

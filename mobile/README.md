@@ -40,7 +40,10 @@ sur `i` (simulateur iOS) / `a` (émulateur Android) dans le terminal.
   - *Catalogue* : recherche locale par titre / auteur / genre, recherches récentes, catégories.
   - *En ligne* : recherche de livres sur le web (voir ci-dessous).
 - **Liseuse** — réglages de lecture réels : **tonalité** (Clair / Sépia / Sombre / Charbon),
-  **taille** et **famille** de police, **marges** ; barre de progression par page.
+  **taille** et **famille** de police, **marges** ; barre de progression par page ; **reprise de
+  lecture** à la page enregistrée ; **traduction** du texte (voir plus bas).
+- **Gestion des livres importés** — suppression depuis la fiche livre (fichier local + entrée
+  Supabase retirés).
 - **Écoute audio** — synthèse vocale réelle via **`expo-speech`** (vitesse, langue).
 - **Ajout de livre** — sélection d'un PDF via **`expo-document-picker`**, stocké localement
   (FileSystem) et/ou envoyé dans **Supabase Storage**.
@@ -82,6 +85,33 @@ Recherche → Google Books (résultats + métadonnées/couvertures)
 > **Clé API Google Books (optionnelle)** — la recherche marche sans clé, mais Google limite le
 > quota *par adresse IP et par jour*. Pour un usage soutenu, renseignez `googleBooksApiKey` dans
 > `src/config.js` (Google Cloud Console → Books API).
+
+## Traduction (agent Mistral)
+
+Dans la liseuse (mode texte), ouvrez **Réglages de lecture → Traduction** et choisissez une langue.
+Le texte est traduit par un **agent Mistral** (API Conversations) puis **mis en cache** :
+
+- La traduction n'est calculée **qu'une seule fois par livre et par langue** — les fois suivantes
+  elle est relue depuis le cache (`AsyncStorage`), sans nouvel appel réseau.
+- « Original » revient au texte source. Le cache est purgé si le livre est supprimé.
+
+Configuration dans `src/config.js`, deux options :
+
+1. **Recommandé (clé côté serveur)** — `mistralProxyUrl` : l'URL d'un proxy (ex. Edge Function
+   Supabase) qui reçoit `{ text, targetLang }` et renvoie `{ translation }`. La clé secrète ne
+   quitte jamais le serveur.
+2. **Rapide (prototype)** — `mistralApiKey` (+ `mistralAgentId`, déjà pré-rempli). ⚠️ Une clé
+   embarquée dans l'app est extractible : à réserver aux tests, pas à une app publiée.
+
+Exemple d'appel (référence) :
+
+```bash
+curl https://api.mistral.ai/v1/conversations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $MISTRAL_API_KEY" \
+  -d '{ "agent_id": "ag_019f94d427db73c3adfdbbb6126ee1d9", "agent_version": 0,
+        "inputs": [{"role":"user","content":"Bonjour"}] }'
+```
 
 ## Animations
 

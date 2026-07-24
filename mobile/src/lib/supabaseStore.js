@@ -89,6 +89,13 @@ export function createSupabaseStore(url, anonKey) {
       if (error) throw new Error(error.message);
       book.pdf_path = pdf_path;
     },
+    async deleteBook(book, user) {
+      if (book.pdf_path) {
+        try { await client.storage.from('pdfs').remove([book.pdf_path]); } catch (e) { console.warn('remove file', e.message); }
+      }
+      const { error } = await client.from('books').delete().eq('id', book.id);
+      if (error) throw new Error(error.message);
+    },
     async loadReviews() {
       const { data, error } = await client.from('reviews').select('*').order('created_at', { ascending: false });
       if (error) { console.warn('loadReviews', error.message); return {}; }

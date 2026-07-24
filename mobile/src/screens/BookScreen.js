@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useApp } from '../lib/store';
@@ -29,6 +29,18 @@ export default function BookScreen({ route, navigation }) {
   const reviews = reviewsFor(app.reviewsByBook, book);
   const rate = bookRating(app.reviewsByBook, book);
   const listed = app.inList(book.id);
+  const isCustom = (app.customBooks || []).some((b) => b.id === book.id);
+
+  function confirmDelete() {
+    Alert.alert(
+      'Supprimer ce livre',
+      `« ${book.title} » sera retiré de votre bibliothèque.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Supprimer', style: 'destructive', onPress: async () => { await app.deleteBook(book); navigation.goBack(); } },
+      ]
+    );
+  }
 
   async function submit() {
     if (!text.trim() || !rating || busy) return;
@@ -47,9 +59,16 @@ export default function BookScreen({ route, navigation }) {
           <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
             <Feather name="chevron-left" size={24} color={colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => app.toggleList(book.id)}>
-            <Feather name="bookmark" size={20} color={listed ? colors.red : colors.text} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {isCustom ? (
+              <TouchableOpacity style={styles.iconBtn} onPress={confirmDelete}>
+                <Feather name="trash-2" size={19} color={colors.text} />
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity style={styles.iconBtn} onPress={() => app.toggleList(book.id)}>
+              <Feather name="bookmark" size={20} color={listed ? colors.red : colors.text} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <FadeInUp delay={40} style={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 8 }}>

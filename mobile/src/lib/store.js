@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import * as FileSystem from 'expo-file-system/legacy';
 import { db } from './db';
 import { storage } from './storage';
 import audio from './audio';
@@ -18,22 +19,25 @@ export function AppProvider({ children }) {
   const [prefs, setPrefs] = useState(DEFAULT_PREFS);
   const [progress, setProgress] = useState({});
   const [listenSeconds, setListenSeconds] = useState(0);
+  const [translations, setTranslations] = useState({});
 
   useEffect(() => { boot(); }, []);
 
   async function boot() {
-    const [rl, rc, pf, pg, ls] = await Promise.all([
+    const [rl, rc, pf, pg, ls, tr] = await Promise.all([
       storage.get('readingList', []),
       storage.get('recent', []),
       storage.get('readerPrefs', null),
       storage.get('progress', {}),
       storage.get('listenSeconds', 0),
+      storage.get('translations', {}),
     ]);
     setReadingList(rl || []);
     setRecent(rc || []);
     if (pf) setPrefs({ ...DEFAULT_PREFS, ...pf });
     setProgress(pg || {});
     setListenSeconds(ls || 0);
+    setTranslations(tr || {});
     try {
       const s = await db.session();
       if (s) { setUser(s); await loadData(); }
@@ -81,6 +85,29 @@ export function AppProvider({ children }) {
     async addBook(book, fileUri) {
       await db.saveBook(book, fileUri, user);
       setCustomBooks((prev) => [...prev, book]);
+    },
+
+    async deleteBook(book) {
+      try { await db.deleteBook(book, user); } catch (e) { console.warn('deleteBook', e.message); }
+      if (book.localUri) { try { await FileSystem.deleteAsync(book.localUri, { idempotent: true }); } catch (e) {} }
+      setCustomBooks((prev) => prev.filter((b) => b.id !== book.id));
+      setReadingList((prev) => { const n = prev.filter((x) => x !== book.id); storage.set('readingList', n); return n; });
+      setProgress((prev) => { const n = { ...prev }; delete n[book.id]; storage.set('progress', n); return n; });
+      setTranslations((prev) => {
+        const n = {};
+        Object.keys(prev).forEach((k) => { if (k.indexOf(book.id + ':') !== 0) n[k] = prev[k]; });
+        storage.set('translations', n);
+        return n;
+      });
+    },
+
+    getTranslation(bookId, lang) {
+      return translations[bookId + ':' + lang] || null;
+    },
+    async saveTranslation(bookId, lang, text) {
+      const next = { ...translations, [bookId + ':' + lang]: text };
+      setTranslations(next);
+      await storage.set('translations', next);
     },
 
     async toggleList(id) {
