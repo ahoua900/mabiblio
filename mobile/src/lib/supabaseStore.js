@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { initialOf, timeAgo } from './util';
 
 // Décodage base64 → octets, sans dépendre de atob (indisponible sur certains moteurs RN).

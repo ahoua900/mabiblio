@@ -3,7 +3,7 @@ import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Keyboa
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useApp } from '../lib/store';
 import { genres, ages, languages } from '../data';
 import { colors, serif } from '../theme';

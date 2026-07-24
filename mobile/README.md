@@ -4,25 +4,32 @@ Version mobile native de Lectura, construite avec **Expo** (React Native). Elle 
 design de l'app web (liseuse premium, accent rouge, navigation par onglets) et les mêmes
 fonctionnalités, avec le même backend **Supabase** (et un repli local hors-ligne).
 
+Cible : **Expo SDK 54** (React Native 0.81, React 19.1, New Architecture activée) — compatible
+avec l'app **Expo Go** SDK 54.
+
 ## Prérequis
 
-- Node.js 18+ et npm
-- L'application **Expo Go** sur votre téléphone (iOS App Store / Google Play), **ou** un
+- Node.js 20+ et npm
+- L'application **Expo Go** (SDK 54) sur votre téléphone (iOS App Store / Google Play), **ou** un
   simulateur iOS (Xcode) / émulateur Android (Android Studio)
 
 ## Lancer
 
 ```bash
 cd mobile
-npm install            # ou: npx expo install   (résout les versions natives)
+npm install
 npx expo start
 ```
 
 Puis scannez le QR code avec **Expo Go** (Android) ou l'app Appareil photo (iOS), ou appuyez
 sur `i` (simulateur iOS) / `a` (émulateur Android) dans le terminal.
 
-> Si `npm install` signale des incompatibilités de versions natives, lancez
-> `npx expo install --fix` pour les aligner sur la version d'Expo installée.
+> Les versions des dépendances sont déjà alignées sur le SDK 54. En cas de doute, exécutez
+> `npx expo install --fix` : cette commande fait foi et cale chaque paquet sur la version exacte
+> attendue par le SDK installé.
+
+> **Note SDK 54** — l'ancienne API de `expo-file-system` a été déplacée sous
+> `expo-file-system/legacy` ; le projet l'importe déjà ainsi (upload de PDF).
 
 ## Fonctionnalités
 
