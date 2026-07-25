@@ -125,3 +125,16 @@ drop policy if exists "pdfs_insert_auth" on storage.objects;
 create policy "pdfs_insert_auth"
   on storage.objects for insert
   with check (bucket_id = 'pdfs' and auth.role() = 'authenticated');
+
+-- ---------------------------------------------------------------------------
+-- 5. Texte extrait des PDF (pour la pagination et la lecture audio hors-ligne)
+--    Migration additive : à rejouer si la colonne n'existe pas encore.
+--    Tant qu'elle n'est pas exécutée, l'app fonctionne quand même (elle
+--    republie simplement sans texte extrait, voir supabaseStore.js).
+-- ---------------------------------------------------------------------------
+alter table public.books add column if not exists text_path text;
+
+-- ---------------------------------------------------------------------------
+-- 6. Couverture (URL d'image, ex. Project Gutenberg) — migration additive.
+-- ---------------------------------------------------------------------------
+alter table public.books add column if not exists thumbnail_url text;

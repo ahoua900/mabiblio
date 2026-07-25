@@ -1,11 +1,13 @@
-import { seedBooks } from '../data';
-
-export function allBooks(customBooks) {
-  return seedBooks.concat(customBooks || []);
+// Fusionne les livres de l'utilisateur (déjà téléchargés/ajoutés) avec le
+// catalogue de découverte (Project Gutenberg), sans doublons.
+export function allBooks(customBooks, catalog) {
+  const own = customBooks || [];
+  const cat = (catalog || []).filter((c) => !own.some((b) => b.id === c.id));
+  return own.concat(cat);
 }
 
-export function getBook(customBooks, id) {
-  return allBooks(customBooks).find((b) => b.id === id);
+export function getBook(customBooks, catalog, id) {
+  return allBooks(customBooks, catalog).find((b) => b.id === id);
 }
 
 export function reviewsFor(reviewsByBook, book) {

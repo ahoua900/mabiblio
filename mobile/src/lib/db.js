@@ -25,10 +25,12 @@ export const db = {
   signOut: () => (remote ? remote.signOut() : localStore.signOut()),
   session: () => (remote ? remote.session() : localStore.session()),
   loadBooks: () => (remote ? remote.loadBooks() : localStore.loadBooks()),
-  saveBook: (book, fileUri, user) => (remote ? remote.saveBook(book, fileUri, user) : localStore.saveBook(book)),
+  saveBook: (book, fileUri, user, textUri) => (remote ? remote.saveBook(book, fileUri, user, textUri) : localStore.saveBook(book)),
   deleteBook: (book, user) => (remote ? remote.deleteBook(book, user) : localStore.deleteBook(book.id)),
   loadReviews: () => (remote ? remote.loadReviews() : localStore.loadReviews()),
   saveReview: (id, r, user) => (remote ? remote.saveReview(id, r, user) : localStore.saveReview(id, r)),
   // En local, le PDF est déjà un fichier sur l'appareil : on renvoie son uri.
   pdfUrl: (book) => (remote ? remote.pdfUrl(book) : Promise.resolve(book.localUri || null)),
+  // Idem pour le texte extrait : localUri en local, URL publique en mode distant.
+  textUrl: (book) => (remote ? remote.textUrl(book) : Promise.resolve(book.textUri || null)),
 };

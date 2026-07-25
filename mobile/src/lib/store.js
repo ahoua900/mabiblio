@@ -1,9 +1,13 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
 import { db } from './db';
 import { storage } from './storage';
 import audio from './audio';
 import { uid, initialOf } from './util';
+import { loadCatalog } from './catalog';
+import { extractBookText, extOf, estimatePageCount } from './textExtract';
+import { getBookText } from './content';
+import PdfTextEngine from '../components/PdfTextEngine';
 
 const AppContext = createContext(null);
 
@@ -20,8 +24,11 @@ export function AppProvider({ children }) {
   const [progress, setProgress] = useState({});
   const [listenSeconds, setListenSeconds] = useState(0);
   const [translations, setTranslations] = useState({});
+  const [catalog, setCatalog] = useState([]);
+  const pdfEngineRef = useRef(null);
 
   useEffect(() => { boot(); }, []);
+  useEffect(() => { loadCatalog().then(setCatalog); }, []);
 
   async function boot() {
     const [rl, rc, pf, pg, ls, tr] = await Promise.all([
@@ -83,13 +90,30 @@ export function AppProvider({ children }) {
     },
 
     async addBook(book, fileUri) {
-      await db.saveBook(book, fileUri, user);
+      const srcUri = book.localUri || fileUri;
+      const ext = extOf(srcUri);
+      let textUri = null;
+      try {
+        const text = await extractBookText(ext, srcUri, pdfEngineRef.current);
+        if (text && text.trim().length > 40) {
+          textUri = FileSystem.documentDirectory + book.id + '.txt';
+          await FileSystem.writeAsStringAsync(textUri, text);
+          book.textUri = textUri;
+          book.pageCount = estimatePageCount(text);
+        }
+      } catch (e) { console.warn('extractBookText', e.message); }
+      await db.saveBook(book, fileUri, user, textUri);
       setCustomBooks((prev) => [...prev, book]);
+    },
+
+    async getBookText(book) {
+      return getBookText(book);
     },
 
     async deleteBook(book) {
       try { await db.deleteBook(book, user); } catch (e) { console.warn('deleteBook', e.message); }
       if (book.localUri) { try { await FileSystem.deleteAsync(book.localUri, { idempotent: true }); } catch (e) {} }
+      if (book.textUri) { try { await FileSystem.deleteAsync(book.textUri, { idempotent: true }); } catch (e) {} }
       setCustomBooks((prev) => prev.filter((b) => b.id !== book.id));
       setReadingList((prev) => { const n = prev.filter((x) => x !== book.id); storage.set('readingList', n); return n; });
       setProgress((prev) => { const n = { ...prev }; delete n[book.id]; storage.set('progress', n); return n; });
@@ -101,11 +125,13 @@ export function AppProvider({ children }) {
       });
     },
 
-    getTranslation(bookId, lang) {
-      return translations[bookId + ':' + lang] || null;
+    // La traduction se fait page par page (un livre entier dépasserait la taille
+    // acceptée par l'agent de traduction) : la clé de cache inclut donc la page.
+    getTranslation(bookId, lang, page) {
+      return translations[bookId + ':' + lang + ':' + page] || null;
     },
-    async saveTranslation(bookId, lang, text) {
-      const next = { ...translations, [bookId + ':' + lang]: text };
+    async saveTranslation(bookId, lang, page, text) {
+      const next = { ...translations, [bookId + ':' + lang + ':' + page]: text };
       setTranslations(next);
       await storage.set('translations', next);
     },
@@ -163,11 +189,16 @@ export function AppProvider({ children }) {
   };
 
   const value = {
-    booting, user, customBooks, reviewsByBook, readingList, recent, prefs, progress, listenSeconds,
+    booting, user, customBooks, reviewsByBook, readingList, recent, prefs, progress, listenSeconds, catalog,
     ...actions,
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      <PdfTextEngine ref={pdfEngineRef} />
+      {children}
+    </AppContext.Provider>
+  );
 }
 
 export function useApp() {

@@ -1,11 +1,21 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { serif } from '../theme';
 import { PressableScale } from './anim';
 
 export default function Cover({ book, width, height, onPress, radius = 13 }) {
+  const [imgFailed, setImgFailed] = useState(false);
   const boxStyle = [styles.cover, { width, height, borderRadius: radius, backgroundColor: book.color }];
-  const inner = (
+  const showImage = book.thumbnail && !imgFailed;
+
+  const inner = showImage ? (
+    <Image
+      source={{ uri: book.thumbnail }}
+      style={StyleSheet.absoluteFill}
+      resizeMode="cover"
+      onError={() => setImgFailed(true)}
+    />
+  ) : (
     <>
       <View style={styles.tag}>
         <Text style={styles.tagText}>PDF</Text>

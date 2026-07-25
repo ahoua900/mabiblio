@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, Platform, Animated, Easing, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, Platform, Animated, Easing, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
@@ -9,21 +9,18 @@ import { getBook } from '../lib/books';
 import { LANG_CODES, languages } from '../data';
 import { colors, serif, THEMES, FONTS, MARGINS } from '../theme';
 import audio from '../lib/audio';
-import { animateNext } from '../components/anim';
+import { animateNext, FadeInUp } from '../components/anim';
 import { translateText, translationConfigured } from '../lib/translate';
+import { estimateCharsPerPage, paginateText } from '../lib/paginate';
+import BookPager from '../components/BookPager';
+import SkeletonBlock from '../components/Skeleton';
 
 const SPEEDS = [0.75, 1, 1.25, 1.5];
 
 export default function ReaderScreen({ route, navigation }) {
   const app = useApp();
-  const book = getBook(app.customBooks, route.params.bookId);
+  const book = getBook(app.customBooks, app.catalog, route.params.bookId);
   const [mode, setMode] = useState(route.params.mode || 'text');
-  // Reprise de lecture : page initiale déduite de la progression enregistrée.
-  const [page, setPage] = useState(() => {
-    const b = getBook(app.customBooks, route.params.bookId);
-    const pct = (app.progress[route.params.bookId] || {}).value || 0;
-    return b ? Math.min(b.pageCount, Math.max(1, Math.round((pct / 100) * b.pageCount) || 1)) : 1;
-  });
   const [showSettings, setShowSettings] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [playing, setPlaying] = useState(false);
@@ -33,6 +30,14 @@ export default function ReaderScreen({ route, navigation }) {
   const [transLang, setTransLang] = useState('original');
   const [transText, setTransText] = useState(null);
   const [transLoading, setTransLoading] = useState(false);
+
+  // Texte intégral extrait du livre (PDF/EPUB/HTML) pour la pagination et l'écoute.
+  const [bookText, setBookText] = useState(null);
+  const [textLoading, setTextLoading] = useState(true);
+  const [pagerSize, setPagerSize] = useState({ width: 0, height: 0 });
+  const [page, setPage] = useState(1);
+  const pctRef = useRef(((app.progress[route.params.bookId] || {}).value) || 0);
+  const audioPageRef = useRef(null);
   const mounted = useRef(true);
 
   const prefs = app.prefs;
@@ -41,7 +46,7 @@ export default function ReaderScreen({ route, navigation }) {
 
   useEffect(() => {
     mounted.current = true;
-    if (mode === 'text') resolvePdf();
+    loadText();
     return () => { mounted.current = false; audio.stop(); };
   }, []);
 
@@ -63,77 +68,178 @@ export default function ReaderScreen({ route, navigation }) {
     return () => { if (loop) loop.stop(); };
   }, [playing]);
 
-  async function resolvePdf() {
+  async function loadText() {
+    setTextLoading(true);
+    let t = null;
+    try {
+      t = await app.getBookText(book);
+      if (mounted.current) setBookText(t);
+    } finally {
+      if (mounted.current) setTextLoading(false);
+    }
+    // Repli sur l'ancien mode « ouvrir le PDF » seulement si aucun texte n'a pu être préparé.
+    if (mounted.current && mode === 'text' && !t) resolvePdfFallback();
+  }
+
+  async function resolvePdfFallback() {
     try {
       const url = await app.pdfUrl(book);
       if (mounted.current) setPdfUrl(url);
     } catch (e) {}
   }
 
-  function togglePlay() {
-    if (!book) return;
-    if (playing) { audio.pause(); setPlaying(false); return; }
+  // Pagination façon livre : recalculée quand le texte, la taille de police,
+  // les marges ou la taille de la zone de lecture changent.
+  const pad = MARGINS[prefs.margin].pad;
+  const font = FONTS[prefs.fontKey].family;
+  const pages = useMemo(() => {
+    if (!bookText || !pagerSize.width || !pagerSize.height) return [];
+    const charsPerPage = estimateCharsPerPage(pagerSize.width - pad * 2, pagerSize.height, prefs.size);
+    return paginateText(bookText, charsPerPage);
+  }, [bookText, pagerSize.width, pagerSize.height, prefs.size, pad]);
+
+  // Repositionne sur la page correspondant à la progression enregistrée dès que
+  // la pagination est disponible (ou recalculée après un changement de réglage).
+  useEffect(() => {
+    if (!pages.length) return;
+    const target = Math.min(pages.length, Math.max(1, Math.round((pctRef.current / 100) * pages.length) || 1));
+    setPage(target);
+  }, [pages.length]);
+
+  function onPageChange(newPage) {
+    setPage(newPage);
+    if (!book || !pages.length) return;
+    const pct = Math.round((newPage / pages.length) * 100);
+    pctRef.current = pct;
+    app.setBookProgress(book.id, book.title, book.color, pct);
+  }
+
+  const audioSource = (bookText && bookText.trim()) || book?.summaryFull || '';
+  // En mode Texte, le bouton d'écoute lit uniquement la page affichée (pas le
+  // livre entier) ; en mode Écoute dédié, c'est le livre complet.
+  const currentPageText = () => pages[page - 1] || book?.summaryFull || '';
+
+  function startReading(text, forPage) {
+    audioPageRef.current = forPage != null ? forPage : null;
     setPlaying(true);
-    audio.progress = audioProgress;
+    setAudioProgress(0);
     audio.start(
-      book.summaryFull + ' ' + book.summaryFull,
+      text,
       { rate: speed, langCode: LANG_CODES[lang] || 'fr-FR' },
-      (p) => { if (mounted.current) { setAudioProgress(p); app.setBookProgress(book.id, book.title, book.color, p); } },
-      () => { if (mounted.current) { setPlaying(false); setAudioProgress(0); app.setBookProgress(book.id, book.title, book.color, 100); } }
+      (p) => {
+        if (!mounted.current) return;
+        setAudioProgress(p);
+        if (mode === 'audio') app.setBookProgress(book.id, book.title, book.color, p);
+      },
+      () => {
+        if (!mounted.current) return;
+        setPlaying(false);
+        setAudioProgress(0);
+        if (mode === 'audio') app.setBookProgress(book.id, book.title, book.color, 100);
+      }
     );
   }
+
+  function togglePlay() {
+    if (!book) return;
+    if (playing) {
+      // Mode Texte : bouton d'écoute d'une seule page → un second appui arrête
+      // complètement (pas de reprise partielle utile sur un texte aussi court).
+      // Mode Écoute (livre entier) : pause classique, reprenable.
+      if (mode === 'text') { audio.stop(); setPlaying(false); setAudioProgress(0); }
+      else { audio.pause(); setPlaying(false); }
+      return;
+    }
+    if (audio.text) { setPlaying(true); audio.resume(); return; }
+    startReading(mode === 'text' ? currentPageText() : audioSource, mode === 'text' ? page : null);
+  }
+
+  // Fait avancer la lecture audio à la page suivante (proposé quand la page
+  // en cours touche à sa fin) et enchaîne directement sa lecture.
+  function playNextPage() {
+    if (!book || page >= pages.length || transLoading) return;
+    audio.stop();
+    const nextPage = page + 1;
+    onPageChange(nextPage);
+    startReading(pages[nextPage - 1] || '', nextPage);
+  }
+
+  // Si l'utilisateur tourne la page manuellement pendant l'écoute de la page
+  // en cours, on arrête l'audio plutôt que de continuer sur un texte qui ne
+  // correspond plus à ce qui est affiché.
+  useEffect(() => {
+    if (mode === 'text' && playing && audioPageRef.current != null && audioPageRef.current !== page) {
+      audio.stop();
+      setPlaying(false);
+      setAudioProgress(0);
+    }
+  }, [page]);
 
   function switchMode(m) {
     audio.stop();
     setPlaying(false);
     setAudioProgress(0);
     setMode(m);
-    if (m === 'text') resolvePdf();
-    else { setShowSettings(false); setPdfUrl(null); }
   }
 
   function changeSpeed(v) {
     setSpeed(v);
-    if (playing) { audio.stop(); setTimeout(togglePlayResume, 0); }
-    function togglePlayResume() {
-      audio.progress = audioProgress;
-      audio.start(book.summaryFull + ' ' + book.summaryFull, { rate: v, langCode: LANG_CODES[lang] || 'fr-FR' },
-        (p) => { if (mounted.current) { setAudioProgress(p); app.setBookProgress(book.id, book.title, book.color, p); } },
-        () => { if (mounted.current) { setPlaying(false); setAudioProgress(0); } });
-    }
+    if (playing) audio.setOptions({ rate: v });
   }
 
-  async function handleTranslate(target) {
+  function changeLang(l) {
+    setLang(l);
+    if (playing) audio.setOptions({ langCode: LANG_CODES[l] || 'fr-FR' });
+  }
+
+  function handleTranslate(target) {
     if (target === transLang) return;
-    if (target === 'original') { setTransLang('original'); setTransText(null); return; }
-    // Cache : si déjà traduit, on réutilise sans rappeler l'API.
-    const cached = app.getTranslation(book.id, target);
-    if (cached) { setTransText(cached); setTransLang(target); return; }
-    if (!translationConfigured()) {
+    if (target !== 'original' && !translationConfigured()) {
       Alert.alert('Traduction', 'Ajoutez votre clé Mistral (ou une URL de proxy) dans src/config.js pour activer la traduction.');
       return;
     }
-    setTransLoading(true);
+    setTransText(null);
     setTransLang(target);
-    try {
-      const t = await translateText(book.summaryFull, target);
-      setTransText(t);
-      app.saveTranslation(book.id, target, t);
-    } catch (e) {
-      Alert.alert('Traduction', e.message);
-      setTransLang('original');
-      setTransText(null);
-    } finally {
-      setTransLoading(false);
-    }
   }
 
-  if (!book) return <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} />;
+  // Un livre entier ne tient pas dans un seul appel de traduction : on traduit
+  // uniquement la page affichée, et on relance automatiquement en tournant les
+  // pages (avec mise en cache par page pour éviter les appels répétés).
+  useEffect(() => {
+    if (transLang === 'original') { setTransText(null); return; }
+    const sourceText = pages[page - 1] || book?.summaryFull;
+    if (!sourceText) return;
+    const cached = app.getTranslation(book.id, transLang, page);
+    if (cached) { setTransText(cached); return; }
+    let cancelled = false;
+    setTransLoading(true);
+    translateText(sourceText, transLang)
+      .then((t) => {
+        if (cancelled) return;
+        setTransText(t);
+        app.saveTranslation(book.id, transLang, page, t);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        Alert.alert('Traduction', e.message);
+        setTransLang('original');
+        setTransText(null);
+      })
+      .finally(() => { if (!cancelled) setTransLoading(false); });
+    return () => { cancelled = true; };
+  }, [transLang, page, pages]);
 
-  const font = FONTS[prefs.fontKey].family;
-  const pad = MARGINS[prefs.margin].pad;
   const translated = transLang !== 'original' && transText != null;
-  const paragraphs = translated ? transText.split(/\n{2,}|\r?\n/).filter((p) => p.trim()) : [book.summaryFull, book.summaryFull, book.summaryFull];
+  // La page courante est remplacée par sa traduction ; les autres pages restent
+  // dans la langue d'origine jusqu'à ce que l'utilisateur les atteigne.
+  const displayPages = useMemo(() => {
+    if (!translated || !pages[page - 1]) return pages;
+    const copy = pages.slice();
+    copy[page - 1] = transText;
+    return copy;
+  }, [pages, translated, transText, page]);
+
+  if (!book) return <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} />;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={['top', 'bottom']}>
@@ -160,44 +266,56 @@ export default function ReaderScreen({ route, navigation }) {
       </View>
 
       {/* Corps */}
-      {mode === 'text' && pdfUrl ? (
+      {mode === 'text' && textLoading ? (
+        <ReaderSkeleton theme={theme} pad={pad} />
+      ) : mode === 'text' && bookText ? (
+        <View style={{ flex: 1 }} onLayout={(e) => setPagerSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}>
+          {transLang !== 'original' ? (
+            <View style={{ alignItems: 'center', paddingTop: 10 }}>
+              {transLoading ? (
+                <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 0.5, color: theme.sub }}>TRADUCTION EN COURS…</Text>
+              ) : (
+                <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 0.5, color: colors.red }}>TRADUIT · {transLang.toUpperCase()}</Text>
+              )}
+            </View>
+          ) : null}
+          {pagerSize.width > 0 && displayPages.length > 0 ? (
+            <BookPager
+              pages={displayPages}
+              page={Math.min(page, displayPages.length)}
+              onPageChange={onPageChange}
+              theme={theme}
+              font={font}
+              fontSize={prefs.size}
+              pad={pad}
+              disabled={transLoading}
+            />
+          ) : null}
+
+          {/* Écoute de la page affichée, sans quitter le mode Texte */}
+          <View pointerEvents="box-none" style={styles.pageAudioWrap}>
+            {playing && audioProgress >= 85 && page < pages.length && !transLoading ? (
+              <FadeInUp distance={8} duration={220}>
+                <TouchableOpacity style={styles.nextPill} onPress={playNextPage}>
+                  <Text style={styles.nextPillText}>Page suivante</Text>
+                  <Feather name="chevron-right" size={14} color="#fff" />
+                </TouchableOpacity>
+              </FadeInUp>
+            ) : null}
+            <TouchableOpacity style={styles.pageAudioBtn} onPress={togglePlay}>
+              <Feather name={playing ? 'square' : 'play'} size={playing ? 18 : 20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : mode === 'text' && pdfUrl ? (
         <WebView source={{ uri: pdfUrl }} style={{ flex: 1, backgroundColor: theme.bg }} originWhitelist={['*']} />
       ) : mode === 'text' ? (
-        <>
-          <ScrollView contentContainerStyle={{ paddingHorizontal: pad, paddingTop: 14, paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
-            <View style={{ alignItems: 'center', marginVertical: 22 }}>
-              <Text style={{ fontSize: 12, letterSpacing: 2, color: theme.sub, fontWeight: '700' }}>CHAPITRE {page}</Text>
-              <Text style={{ fontSize: 20, fontWeight: '700', marginTop: 8, fontFamily: font, color: theme.fg }}>{book.title}</Text>
-              {translated ? <Text style={{ marginTop: 8, fontSize: 11, fontWeight: '700', letterSpacing: 0.5, color: colors.red }}>TRADUIT · {transLang.toUpperCase()}</Text> : null}
-            </View>
-            {transLoading ? (
-              <View style={{ paddingVertical: 30, alignItems: 'center' }}>
-                <ActivityIndicator color={colors.red} />
-                <Text style={{ color: theme.sub, marginTop: 10, fontSize: 13 }}>Traduction en cours…</Text>
-              </View>
-            ) : (
-              paragraphs.map((p, i) => (
-                <Text key={i} style={{ fontSize: prefs.size, lineHeight: prefs.size * 1.85, marginBottom: 18, color: theme.fg, fontFamily: font, textAlign: 'justify' }}>
-                  {p}
-                </Text>
-              ))
-            )}
-          </ScrollView>
-          <View style={styles.bottom}>
-            <Slider
-              style={{ width: '100%', height: 34 }}
-              minimumValue={1}
-              maximumValue={book.pageCount}
-              step={1}
-              value={page}
-              minimumTrackTintColor={colors.red}
-              maximumTrackTintColor={theme.chip}
-              thumbTintColor={colors.red}
-              onValueChange={(v) => { const p = Math.round(v); setPage(p); app.setBookProgress(book.id, book.title, book.color, Math.round((p / book.pageCount) * 100)); }}
-            />
-            <Text style={{ textAlign: 'center', fontSize: 12, fontWeight: '600', color: theme.sub }}>Page {page} sur {book.pageCount}</Text>
-          </View>
-        </>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30 }}>
+          <Feather name="alert-circle" size={26} color={theme.sub} />
+          <Text style={{ color: theme.sub, marginTop: 12, fontSize: 13, textAlign: 'center' }}>
+            Le texte de ce livre n'a pas pu être préparé.
+          </Text>
+        </View>
       ) : (
         <ScrollView contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 28, paddingTop: 20, paddingBottom: 40 }}>
           <View style={{ width: 190, height: 270, borderRadius: 14, backgroundColor: book.color, justifyContent: 'flex-end', padding: 16 }}>
@@ -232,7 +350,7 @@ export default function ReaderScreen({ route, navigation }) {
           <Text style={[styles.audioLabel, { color: theme.sub }]}>LANGUE</Text>
           <View style={styles.audioChips}>
             {languages.map((l) => (
-              <TouchableOpacity key={l} onPress={() => { setLang(l); if (playing) changeSpeed(speed); }} style={[styles.aChip, { backgroundColor: theme.chip }, lang === l && { backgroundColor: colors.red }]}>
+              <TouchableOpacity key={l} onPress={() => changeLang(l)} style={[styles.aChip, { backgroundColor: theme.chip }, lang === l && { backgroundColor: colors.red }]}>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: lang === l ? '#fff' : theme.fg }}>{l}</Text>
               </TouchableOpacity>
             ))}
@@ -296,12 +414,28 @@ export default function ReaderScreen({ route, navigation }) {
             ))}
           </Row>
           <Text style={{ fontSize: 11.5, color: colors.muted2, marginTop: 8 }}>
-            La traduction est enregistrée : elle ne sera calculée qu'une seule fois par langue.
+            La traduction se fait page par page et est enregistrée : chaque page n'est traduite qu'une seule fois par langue.
           </Text>
           <View style={{ height: 12 }} />
         </View>
       </Modal>
     </SafeAreaView>
+  );
+}
+
+// Squelette façon page de livre pendant l'extraction du texte (peut prendre
+// plusieurs secondes sur un gros PDF) : évite de laisser l'utilisateur face
+// à un écran figé sans indication de progression.
+const SKELETON_LINES = ['94%', '86%', '96%', '72%', '90%', '62%', '92%', '80%', '88%', '68%'];
+function ReaderSkeleton({ theme, pad }) {
+  return (
+    <View style={{ flex: 1, paddingHorizontal: pad, paddingTop: 26 }}>
+      <SkeletonBlock width={130} height={12} color={theme.chip} style={{ alignSelf: 'center', marginBottom: 12 }} />
+      <SkeletonBlock width={190} height={18} color={theme.chip} style={{ alignSelf: 'center', marginBottom: 34 }} />
+      {SKELETON_LINES.map((w, i) => (
+        <SkeletonBlock key={i} width={w} height={13} color={theme.chip} style={{ marginBottom: 16 }} />
+      ))}
+    </View>
   );
 }
 
@@ -320,8 +454,11 @@ const styles = StyleSheet.create({
   seg: { flexDirection: 'row', borderRadius: 11, padding: 3 },
   segItem: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 8 },
   iconBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  bottom: { paddingHorizontal: 22, paddingVertical: 12 },
   playBig: { width: 66, height: 66, borderRadius: 33, backgroundColor: colors.red, alignItems: 'center', justifyContent: 'center', marginBottom: 28, shadowColor: colors.red, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  pageAudioWrap: { position: 'absolute', left: 0, right: 0, bottom: 40, alignItems: 'center', gap: 10 },
+  pageAudioBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: colors.red, alignItems: 'center', justifyContent: 'center', shadowColor: colors.red, shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
+  nextPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.text, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10 },
+  nextPillText: { color: '#fff', fontSize: 12.5, fontWeight: '700' },
   audioLabel: { fontSize: 11, fontWeight: '700', alignSelf: 'flex-start', marginBottom: 8 },
   audioChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignSelf: 'flex-start', marginBottom: 20 },
   aChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10 },

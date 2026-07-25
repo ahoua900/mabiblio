@@ -64,11 +64,11 @@ export function createSupabaseStore(url, anonKey) {
       if (error) { console.warn('loadBooks', error.message); return []; }
       return data.map((r) => ({
         id: r.id, owner: r.owner, title: r.title, author: r.author, genre: r.genre, age: r.age,
-        color: r.color || '#8A3D8F', rating: 0, language: r.language, pageCount: r.page_count || 12,
-        summaryFull: r.summary || '', pdf_path: r.pdf_path, reviews: [],
+        color: r.color || '#8A3D8F', thumbnail: r.thumbnail_url || null, rating: 0, language: r.language, pageCount: r.page_count || 12,
+        summaryFull: r.summary || '', pdf_path: r.pdf_path, text_path: r.text_path || null, reviews: [],
       }));
     },
-    async saveBook(book, fileUri, user) {
+    async saveBook(book, fileUri, user, textUri) {
       let pdf_path = null;
       if (fileUri) {
         try {
@@ -82,16 +82,46 @@ export function createSupabaseStore(url, anonKey) {
           if (up.error) { console.warn('upload file', up.error.message); pdf_path = null; }
         } catch (e) { console.warn('file read', e.message); pdf_path = null; }
       }
-      const { error } = await client.from('books').insert({
+
+      let text_path = null;
+      if (textUri) {
+        try {
+          const base64 = await FileSystem.readAsStringAsync(textUri, { encoding: FileSystem.EncodingType.Base64 });
+          const bytes = base64ToBytes(base64);
+          text_path = user.id + '/' + book.id + '.txt';
+          const up = await client.storage.from('pdfs').upload(text_path, bytes, { contentType: 'text/plain', upsert: true });
+          if (up.error) { console.warn('upload text', up.error.message); text_path = null; }
+        } catch (e) { console.warn('text read', e.message); text_path = null; }
+      }
+
+      const row = {
         id: book.id, owner: user.id, title: book.title, author: book.author, genre: book.genre, age: book.age,
-        language: book.language, color: book.color, page_count: book.pageCount, summary: book.summaryFull, pdf_path,
-      });
+        language: book.language, color: book.color, page_count: book.pageCount, summary: book.summaryFull,
+        pdf_path, text_path, thumbnail_url: book.thumbnail || null,
+      };
+      // Colonnes optionnelles ajoutées après coup (migrations additives dans supabase/schema.sql) :
+      // si l'une d'elles n'existe pas encore côté Supabase, on republie sans elle plutôt que d'échouer.
+      const optionalCols = ['text_path', 'thumbnail_url'];
+      let error;
+      for (let attempt = 0; attempt <= optionalCols.length; attempt++) {
+        ({ error } = await client.from('books').insert(row));
+        if (!error) break;
+        const missing = optionalCols.find((c) => c in row && new RegExp(c, 'i').test(error.message));
+        if (!missing) break;
+        console.warn(`books.${missing} manquant — exécutez la migration supabase/schema.sql. Détail :`, error.message);
+        delete row[missing];
+        if (missing === 'text_path') text_path = null;
+      }
       if (error) throw new Error(error.message);
       book.pdf_path = pdf_path;
+      book.text_path = text_path;
     },
     async deleteBook(book, user) {
       if (book.pdf_path) {
         try { await client.storage.from('pdfs').remove([book.pdf_path]); } catch (e) { console.warn('remove file', e.message); }
+      }
+      if (book.text_path) {
+        try { await client.storage.from('pdfs').remove([book.text_path]); } catch (e) { console.warn('remove text', e.message); }
       }
       const { error } = await client.from('books').delete().eq('id', book.id);
       if (error) throw new Error(error.message);
@@ -117,6 +147,11 @@ export function createSupabaseStore(url, anonKey) {
     async pdfUrl(book) {
       if (!book.pdf_path) return null;
       const { data } = client.storage.from('pdfs').getPublicUrl(book.pdf_path);
+      return data ? data.publicUrl : null;
+    },
+    async textUrl(book) {
+      if (!book.text_path) return null;
+      const { data } = client.storage.from('pdfs').getPublicUrl(book.text_path);
       return data ? data.publicUrl : null;
     },
   };

@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 6,
   },
   btn: {
-    paddingVertical: 15, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 15, paddingHorizontal: 20, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
     flexDirection: 'row', gap: 8,
   },
   sec: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 24, marginBottom: 12 },

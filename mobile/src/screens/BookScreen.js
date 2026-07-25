@@ -1,24 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useApp } from '../lib/store';
 import { getBook, reviewsFor, bookRating } from '../lib/books';
+import { downloadOnlineBook } from '../lib/download';
 import { colors, serif, GENRE_COLORS } from '../theme';
 import Cover from '../components/Cover';
 import Stars from '../components/Stars';
 import { Button } from '../components/ui';
 import { FadeInUp } from '../components/anim';
+import SkeletonBlock from '../components/Skeleton';
 
 export default function BookScreen({ route, navigation }) {
   const app = useApp();
-  const book = getBook(app.customBooks, route.params.bookId);
+  // Un résultat de recherche en ligne n'est ni dans customBooks ni dans le
+  // catalogue : la page de détail utilise alors l'aperçu transmis par ExploreScreen.
+  const book = getBook(app.customBooks, app.catalog, route.params.bookId) || route.params.previewBook || null;
   const [rating, setRating] = useState(0);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [dlProgress, setDlProgress] = useState(null);
+
+  const isCustom = (app.customBooks || []).some((b) => b.id === route.params.bookId);
 
   useEffect(() => {
-    if (book) {
+    // Ne marque une progression de lecture que pour un livre déjà possédé : un simple
+    // aperçu d'un livre du catalogue ne doit pas polluer « Reprendre la lecture ».
+    if (book && isCustom) {
       const cur = (app.progress[book.id] || {}).value || 5;
       app.setBookProgress(book.id, book.title, book.color, Math.max(5, Math.round(cur)));
     }
@@ -29,7 +39,6 @@ export default function BookScreen({ route, navigation }) {
   const reviews = reviewsFor(app.reviewsByBook, book);
   const rate = bookRating(app.reviewsByBook, book);
   const listed = app.inList(book.id);
-  const isCustom = (app.customBooks || []).some((b) => b.id === book.id);
 
   function confirmDelete() {
     Alert.alert(
@@ -50,6 +59,25 @@ export default function BookScreen({ route, navigation }) {
       setRating(0);
       setText('');
     } catch (e) {} finally { setBusy(false); }
+  }
+
+  async function openReader(mode) {
+    if (downloading) return;
+    if (!book.remote || isCustom) {
+      navigation.navigate('Reader', { bookId: book.id, mode });
+      return;
+    }
+    setDownloading(true);
+    setDlProgress(0);
+    try {
+      const added = await downloadOnlineBook(app, book, setDlProgress);
+      navigation.navigate('Reader', { bookId: added.id, mode });
+    } catch (e) {
+      Alert.alert('Téléchargement impossible', 'Ce livre n’a pas pu être récupéré. Vérifiez votre connexion et réessayez.');
+    } finally {
+      setDownloading(false);
+      setDlProgress(null);
+    }
   }
 
   return (
@@ -90,9 +118,29 @@ export default function BookScreen({ route, navigation }) {
         </FadeInUp>
 
         <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginTop: 20 }}>
-          <Button title="Lire" onPress={() => navigation.navigate('Reader', { bookId: book.id, mode: 'text' })} style={{ flex: 1 }} />
-          <Button variant="soft" icon={<Feather name="headphones" size={18} color={colors.text} />} onPress={() => navigation.navigate('Reader', { bookId: book.id, mode: 'audio' })} style={{ width: 56 }} />
+          <Button
+            title={downloading ? 'Téléchargement…' : book.remote && !isCustom ? 'Télécharger et lire' : 'Lire'}
+            onPress={() => openReader('text')}
+            disabled={downloading}
+            icon={downloading ? <ActivityIndicator size="small" color="#fff" /> : undefined}
+            style={{ flex: 1 }}
+          />
+          <Button variant="soft" disabled={downloading} icon={<Feather name="headphones" size={18} color={colors.text} />} onPress={() => openReader('audio')} style={{ width: 56, paddingHorizontal: 0 }} />
         </View>
+
+        {downloading ? (
+          <View style={styles.downloadCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <ActivityIndicator size="small" color={colors.red} />
+              <Text style={styles.downloadTitle}>
+                {dlProgress != null ? `Téléchargement… ${Math.round(dlProgress * 100)}%` : 'Préparation du livre…'}
+              </Text>
+            </View>
+            <SkeletonBlock width="90%" height={12} style={{ marginBottom: 9 }} />
+            <SkeletonBlock width="74%" height={12} style={{ marginBottom: 9 }} />
+            <SkeletonBlock width="82%" height={12} />
+          </View>
+        ) : null}
 
         <Text style={styles.summary}>{book.summaryFull}</Text>
 
@@ -142,6 +190,8 @@ export default function BookScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8 },
+  downloadCard: { marginHorizontal: 20, marginTop: 16, backgroundColor: colors.soft, borderRadius: 16, padding: 16 },
+  downloadTitle: { fontSize: 13, fontWeight: '700', color: colors.text },
   iconBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.soft, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 23, fontWeight: '800', letterSpacing: -0.4, marginTop: 18, fontFamily: serif, textAlign: 'center', color: colors.text },
   author: { fontSize: 14, color: colors.muted, marginTop: 3 },

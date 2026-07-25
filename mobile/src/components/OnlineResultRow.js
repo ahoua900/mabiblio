@@ -1,13 +1,13 @@
 import React from 'react';
-import { View, Text, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Image, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { colors, serif } from '../theme';
 import { PressableScale } from './anim';
 
-export default function OnlineResultRow({ result, busy, progress, onGet }) {
+export default function OnlineResultRow({ result, busy, progress, onGet, onOpen }) {
   const pct = progress != null ? Math.round(progress * 100) : null;
   return (
-    <View style={styles.row}>
+    <TouchableOpacity style={styles.row} activeOpacity={0.85} onPress={() => onOpen && onOpen(result)}>
       {result.thumbnail ? (
         <Image source={{ uri: result.thumbnail }} style={styles.thumb} />
       ) : (
@@ -48,7 +48,7 @@ export default function OnlineResultRow({ result, busy, progress, onGet }) {
           </PressableScale>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

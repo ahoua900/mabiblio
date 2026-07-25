@@ -18,11 +18,11 @@ export default function LibraryScreen({ navigation }) {
   const progress = app.progress;
 
   let items = [];
-  if (tab === 'Ma liste') items = app.readingList.map((id) => getBook(app.customBooks, id)).filter(Boolean);
-  else if (tab === 'En cours') items = app.history().map((h) => getBook(app.customBooks, h.id)).filter(Boolean);
+  if (tab === 'Ma liste') items = app.readingList.map((id) => getBook(app.customBooks, app.catalog, id)).filter(Boolean);
+  else if (tab === 'En cours') items = app.history().map((h) => getBook(app.customBooks, app.catalog, h.id)).filter(Boolean);
   else if (tab === 'Mes livres') items = (app.customBooks || []).slice().reverse();
   else {
-    const a = app.readingList.map((id) => getBook(app.customBooks, id)).filter(Boolean);
+    const a = app.readingList.map((id) => getBook(app.customBooks, app.catalog, id)).filter(Boolean);
     const b = (app.customBooks || []).slice().reverse();
     items = a.concat(b).filter((x, i, arr) => arr.indexOf(x) === i);
   }

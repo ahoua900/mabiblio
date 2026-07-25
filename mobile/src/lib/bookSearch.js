@@ -25,28 +25,53 @@ async function getJson(url) {
 
 const https = (u) => (u ? String(u).replace(/^http:\/\//, 'https://') : u);
 
+// Extrait l'URL de couverture d'un jeu de formats Gutendex.
+export function thumbFromFormats(formats) {
+  const thumb = formats && (formats['image/jpeg'] || formats['image/png'] || formats['image/gif']);
+  return thumb ? https(thumb) : null;
+}
+
 // ---------------------------------------------------------------------------
 // 1. Project Gutenberg — recherche principale
 // ---------------------------------------------------------------------------
+// « search » couvre titre + auteur, « topic » couvre sujets/bookshelves ; Gutendex
+// combine les deux paramètres en ET, donc pour une recherche « par tout » on
+// interroge les deux séparément puis on fusionne (sans doublons).
 export async function searchOnline(query) {
   const q = encodeURIComponent(query.trim());
   if (!q) return [];
-  const url = `https://gutendex.com/books/?search=${q}&page_size=24`;
-  const data = await getJson(url);
-  return (data.results || []).map(normalizeGutenberg).filter(Boolean);
+  const [bySearch, byTopic] = await Promise.all([
+    getJson(`https://gutendex.com/books/?search=${q}&page_size=24`).catch((e) => e),
+    getJson(`https://gutendex.com/books/?topic=${q}&page_size=24`).catch((e) => e),
+  ]);
+  // Si les deux requêtes ont échoué (ex. hors-ligne), on le signale à l'appelant
+  // plutôt que de renvoyer silencieusement une liste vide.
+  if (bySearch instanceof Error && byTopic instanceof Error) throw bySearch;
+
+  const seen = new Set();
+  const merged = [];
+  const results = [
+    ...(bySearch instanceof Error ? [] : bySearch.results || []),
+    ...(byTopic instanceof Error ? [] : byTopic.results || []),
+  ];
+  for (const b of results) {
+    if (!b || seen.has(b.id)) continue;
+    seen.add(b.id);
+    merged.push(b);
+  }
+  return merged.map(normalizeGutenberg).filter(Boolean);
 }
 
 function normalizeGutenberg(book) {
   if (!book || !book.title) return null;
   const authors = Array.isArray(book.authors) ? book.authors.map((a) => a.name).filter(Boolean) : [];
-  const thumb = book.formats && (book.formats['image/jpeg'] || book.formats['image/png'] || book.formats['image/gif']);
   const year = String(book.bookshelves || []).match(/\d{4}/)?.[0] || '';
   return {
     key: 'gutenberg:' + book.id,
     source: 'Project Gutenberg',
     title: book.title,
     authors: authors.join(', '),
-    thumbnail: thumb ? https(thumb) : null,
+    thumbnail: thumbFromFormats(book.formats),
     description: book.subjects ? book.subjects.slice(0, 4).join(', ') : '',
     year,
     language: langLabel((book.languages || [])[0]),
@@ -59,7 +84,33 @@ function normalizeGutenberg(book) {
   };
 }
 
-function langLabel(code) {
+// Transforme un résultat de recherche en ligne en objet « livre », pour
+// afficher une page de détail avant même de l'avoir téléchargé.
+export function toPreviewBook(result) {
+  const authorLabel = result.authors || result.author || 'Auteur inconnu';
+  return {
+    id: result.key,
+    remote: true,
+    title: result.title,
+    author: authorLabel,
+    authors: authorLabel,
+    genre: result.genre || 'Roman',
+    age: result.age || 'Adultes',
+    color: result.color,
+    thumbnail: result.thumbnail || null,
+    rating: 0,
+    language: result.language || 'Français',
+    pageCount: 1,
+    summaryFull: result.description || `Livre importé depuis ${result.source || 'une source en ligne'}.`,
+    description: result.description,
+    reviews: [],
+    formats: result.formats,
+    previewLink: result.previewLink,
+    source: result.source,
+  };
+}
+
+export function langLabel(code) {
   const map = { fr: 'Français', en: 'English', es: 'Español', de: 'Deutsch', ar: 'العربية', zh: '中文' };
   return map[code] || 'Français';
 }
@@ -88,6 +139,12 @@ export async function resolveDownload(result) {
   // 0. Fichier direct de Google Books (domaine public, rare)
   if (result.googlePdf) return { url: result.googlePdf, ext: 'pdf', source: 'Google Books' };
   if (result.googleEpub) return { url: result.googleEpub, ext: 'epub', source: 'Google Books' };
+
+  // 0bis. Formats déjà connus (résultat Gutenberg déjà chargé) : pas besoin de rechercher à nouveau.
+  if (result.formats && Object.keys(result.formats).length) {
+    const direct = pickGutenbergFormat(result.formats);
+    if (direct) return direct;
+  }
 
   const title = result.title.split(' — ')[0];
   const author = result.authors;
@@ -128,7 +185,11 @@ async function tryGutenberg(title, author) {
   const data = await getJson(`https://gutendex.com/books/?search=${q}`);
   const book = (data.results || [])[0];
   if (!book || !book.formats) return null;
-  const f = book.formats;
+  return pickGutenbergFormat(book.formats);
+}
+
+// Choisit le meilleur format téléchargeable parmi ceux exposés par Gutendex.
+function pickGutenbergFormat(f) {
   const pick = (needle) => {
     const k = Object.keys(f).find((m) => m.indexOf(needle) !== -1 && !/zip$/i.test(f[m]));
     return k ? https(f[k]) : null;

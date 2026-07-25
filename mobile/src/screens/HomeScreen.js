@@ -13,12 +13,19 @@ import { FadeInUp, PressableScale } from '../components/anim';
 
 export default function HomeScreen({ navigation }) {
   const app = useApp();
-  const books = allBooks(app.customBooks);
+  const books = allBooks(app.customBooks, app.catalog);
   const hist = app.history();
-  const current = hist.length ? getBook(app.customBooks, hist[0].id) : null;
+  const current = hist.length ? getBook(app.customBooks, app.catalog, hist[0].id) : null;
   const trending = books.slice().sort((a, b) => bookRating(app.reviewsByBook, b) - bookRating(app.reviewsByBook, a)).slice(0, 8);
-  const nouveautes = (app.customBooks || []).slice().reverse().concat(books).slice(0, 8);
+  const nouveautes = (app.customBooks || []).slice().reverse().concat(app.catalog || []).slice(0, 8);
   const open = (id) => navigation.navigate('Book', { bookId: id });
+
+  // Les 20 premiers livres du catalogue (Gutenberg), regroupés par catégorie :
+  // parcourables directement depuis l'accueil, sans avoir à lancer de recherche.
+  const firstTwenty = (app.catalog || []).slice(0, 20);
+  const byCategory = genres
+    .map((g) => [g, firstTwenty.filter((b) => b.genre === g)])
+    .filter(([, items]) => items.length > 0);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }} edges={['top']}>
@@ -71,16 +78,33 @@ export default function HomeScreen({ navigation }) {
           </ScrollView>
         </FadeInUp>
 
-        <FadeInUp delay={220}>
-          <SectionHeader title="Explorer par catégorie" />
-          <View style={styles.catGrid}>
-            {genres.map((g) => (
-              <TouchableOpacity key={g} activeOpacity={0.85} style={[styles.cat, { backgroundColor: GENRE_COLORS[g] }]} onPress={() => navigation.navigate('Explorer', { category: g })}>
-                <Text style={styles.catText}>{g}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </FadeInUp>
+        {byCategory.length ? (
+          byCategory.map(([g, items], i) => (
+            <FadeInUp key={g} delay={220 + i * 40}>
+              <SectionHeader title={g} actionLabel="Tout voir" onAction={() => navigation.navigate('Explorer', { category: g })} />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 15 }}>
+                {items.map((b) => (
+                  <View key={b.id} style={{ width: 112 }}>
+                    <Cover book={b} width={112} height={162} onPress={() => open(b.id)} />
+                    <Text style={styles.cardTitle} numberOfLines={2}>{b.title}</Text>
+                    <Text style={styles.cardAuthor} numberOfLines={1}>{b.author}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </FadeInUp>
+          ))
+        ) : (
+          <FadeInUp delay={220}>
+            <SectionHeader title="Explorer par catégorie" />
+            <View style={styles.catGrid}>
+              {genres.map((g) => (
+                <TouchableOpacity key={g} activeOpacity={0.85} style={[styles.cat, { backgroundColor: GENRE_COLORS[g] }]} onPress={() => navigation.navigate('Explorer', { category: g })}>
+                  <Text style={styles.catText}>{g}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </FadeInUp>
+        )}
 
         <FadeInUp delay={300}>
           <SectionHeader title="Nouveautés" />
