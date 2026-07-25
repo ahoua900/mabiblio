@@ -3,8 +3,12 @@ import config from '../config';
 // Traduction de texte via un agent Mistral (API Conversations), ou via un proxy
 // serveur si `mistralProxyUrl` est renseigné (clé gardée côté serveur).
 
+function isProxyUrl(url) {
+  return typeof url === 'string' && /^(https?:\/\/)/i.test(url);
+}
+
 export function translationConfigured() {
-  return !!(config.mistralProxyUrl || config.mistralApiKey);
+  return !!(isProxyUrl(config.mistralProxyUrl) || config.mistralApiKey);
 }
 
 export async function translateText(text, targetLang) {
@@ -12,7 +16,7 @@ export async function translateText(text, targetLang) {
   if (!clean) return '';
 
   // 1) Proxy serveur : { text, targetLang } → { translation }
-  if (config.mistralProxyUrl) {
+  if (isProxyUrl(config.mistralProxyUrl)) {
     const data = await postJson(config.mistralProxyUrl, { text: clean, targetLang });
     const out = (data.translation || data.text || '').trim();
     if (!out) throw new Error('Réponse de traduction vide.');

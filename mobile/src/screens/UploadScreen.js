@@ -52,7 +52,7 @@ export default function UploadScreen({ navigation }) {
       summaryFull: 'Livre ajouté par vous récemment.', reviews: [], localUri,
     };
     try {
-      await app.addBook(book, fileUri);
+      await app.addBook(book, localUri || fileUri);
       navigation.navigate('Tabs', { screen: 'Bibliothèque' });
     } catch (e) {
       Alert.alert('Erreur', e.message);

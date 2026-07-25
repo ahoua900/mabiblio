@@ -1,10 +1,5 @@
-import config from '../config';
-
 // ============================================================================
-// Recherche de livres en ligne, selon la cascade :
-//   Google Books (recherche + métadonnées)
-//     └─ si fichier téléchargeable → on télécharge
-//        sinon → Open Library → Project Gutenberg → Internet Archive
+// Recherche de livres en ligne directement dans Project Gutenberg.
 // ============================================================================
 
 const TIMEOUT = 11000;
@@ -31,43 +26,36 @@ async function getJson(url) {
 const https = (u) => (u ? String(u).replace(/^http:\/\//, 'https://') : u);
 
 // ---------------------------------------------------------------------------
-// 1. Google Books — recherche principale
+// 1. Project Gutenberg — recherche principale
 // ---------------------------------------------------------------------------
 export async function searchOnline(query) {
   const q = encodeURIComponent(query.trim());
   if (!q) return [];
-  const key = config.googleBooksApiKey ? `&key=${config.googleBooksApiKey}` : '';
-  const url = `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=24&country=US${key}`;
+  const url = `https://gutendex.com/books/?search=${q}&page_size=24`;
   const data = await getJson(url);
-  return (data.items || []).map(normalizeGoogle).filter(Boolean);
+  return (data.results || []).map(normalizeGutenberg).filter(Boolean);
 }
 
-function normalizeGoogle(it) {
-  const vi = it.volumeInfo || {};
-  const ai = it.accessInfo || {};
-  if (!vi.title) return null;
-  const thumb = vi.imageLinks && https(vi.imageLinks.thumbnail || vi.imageLinks.smallThumbnail);
-  // Google ne fournit un PDF/EPUB librement téléchargeable que pour le domaine
-  // public et sans jeton DRM (acsTokenLink). Sinon c'est un aperçu.
-  const clean = (fmt) => (fmt && fmt.isAvailable && ai.publicDomain && !fmt.acsTokenLink ? https(fmt.downloadLink) : null);
-  const { genre, age } = classify(vi.categories, ai.maturityRating);
+function normalizeGutenberg(book) {
+  if (!book || !book.title) return null;
+  const authors = Array.isArray(book.authors) ? book.authors.map((a) => a.name).filter(Boolean) : [];
+  const thumb = book.formats && (book.formats['image/jpeg'] || book.formats['image/png'] || book.formats['image/gif']);
+  const year = String(book.bookshelves || []).match(/\d{4}/)?.[0] || '';
   return {
-    key: 'google:' + it.id,
-    source: 'Google Books',
-    title: vi.title + (vi.subtitle ? ' — ' + vi.subtitle : ''),
-    authors: (vi.authors || []).join(', '),
-    thumbnail: thumb || null,
-    description: vi.description || '',
-    year: (vi.publishedDate || '').slice(0, 4),
-    publisher: vi.publisher || '',
-    language: langLabel(vi.language),
-    genre,
-    age,
-    previewLink: ai.webReaderLink || vi.previewLink || vi.infoLink || null,
-    publicDomain: !!ai.publicDomain,
-    googlePdf: clean(ai.pdf),
-    googleEpub: clean(ai.epub),
-    color: colorFromString(vi.title),
+    key: 'gutenberg:' + book.id,
+    source: 'Project Gutenberg',
+    title: book.title,
+    authors: authors.join(', '),
+    thumbnail: thumb ? https(thumb) : null,
+    description: book.subjects ? book.subjects.slice(0, 4).join(', ') : '',
+    year,
+    language: langLabel((book.languages || [])[0]),
+    genre: 'Roman',
+    age: 'Adultes',
+    previewLink: `https://www.gutenberg.org/ebooks/${book.id}`,
+    publicDomain: true,
+    formats: book.formats || {},
+    color: colorFromString(book.title),
   };
 }
 
@@ -76,7 +64,7 @@ function langLabel(code) {
   return map[code] || 'Français';
 }
 
-// Déduit un genre et une tranche d'âge à partir des catégories Google Books.
+// Déduit un genre et une tranche d'âge à partir des catégories du résultat de recherche.
 export function classify(categories, maturity) {
   const c = (categories || []).join(' ').toLowerCase();
   let genre = 'Roman';

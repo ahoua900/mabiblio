@@ -282,8 +282,8 @@ function OnlineSection({ query, loading, error, results, busyKey, dlProgress, on
           <Feather name="globe" size={26} color={colors.muted2} />
           <Text style={styles.hintTitle}>Recherchez parmi des millions de livres</Text>
           <Text style={styles.hintText}>
-            Google Books pour la recherche, puis téléchargement quand une version libre existe
-            (Open Library, Project Gutenberg, Internet Archive).
+            Project Gutenberg pour la recherche et le téléchargement de livres libres.
+            Si nécessaire, l’application cherchera ensuite Open Library ou Internet Archive.
           </Text>
         </View>
       )}
